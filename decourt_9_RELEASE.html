@@ -366,7 +366,14 @@ canvas{display:block;width:100%;border-radius:9px;border:1px solid var(--border)
 
 <!-- BLOCO 2 – SONDAGEM SPT -->
 <div class="card">
-  <div class="card-title">Dados de sondagem SPT</div>
+  <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <span>Dados de sondagem SPT</span>
+    <div style="display:flex;gap:6px;">
+      <button class="action-btn" onclick="exportProject()" title="Salvar todas as sondagens e configurações em um arquivo">Exportar perfil</button>
+      <button class="action-btn" onclick="document.getElementById('importProjectInput').click()" title="Carregar sondagens e configurações de um arquivo salvo">Importar perfil</button>
+      <input type="file" id="importProjectInput" accept="application/json" style="display:none" onchange="importProject(this.files[0])">
+    </div>
+  </div>
   <div class="sounding-tabs" id="soundingTabs"></div>
   <div class="quick-add">
     <div>
@@ -390,11 +397,13 @@ canvas{display:block;width:100%;border-radius:9px;border:1px solid var(--border)
   </div>
   <div id="sptRows"></div>
 
-  <!-- Perfil + rLi -->
+  <!-- Perfil + rLi/NSPT -->
   <div style="margin-top:16px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-      <div class="card-title" style="margin-bottom:0">Perfil estratigráfico &amp; rLi</div>
-      <div style="display:flex;gap:6px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px;">
+      <div class="card-title" style="margin-bottom:0">Perfil estratigráfico</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="shape-toggle-btn" id="rliToggleBtn" onclick="toggleProfileTrace('rli')" title="Mostrar/ocultar traçado de rLi">rLi</button>
+        <button class="shape-toggle-btn on" id="nsptToggleBtn" onclick="toggleProfileTrace('nspt')" title="Mostrar/ocultar traçado de NSPT">NSPT</button>
         <button class="action-btn" onclick="openFullscreen('profile')" title="Tela cheia"> Expandir</button>
         <button class="action-btn danger" onclick="clearProfile()" title="Limpar sondagem"> Limpar</button>
       </div>
@@ -402,9 +411,9 @@ canvas{display:block;width:100%;border-radius:9px;border:1px solid var(--border)
     <!-- Escala N para o perfil -->
     <div class="scale-row">
       <label>Escala N</label>
-      <input type="range" id="profileNScale" min="20" max="100" step="5" value="50"
+      <input type="range" id="profileNScale" min="20" max="200" step="5" value="100"
         oninput="document.getElementById('profileNScaleVal').textContent=this.value;drawProfile()">
-      <span class="scale-val" id="profileNScaleVal">50</span>
+      <span class="scale-val" id="profileNScaleVal">100</span>
     </div>
     <div class="canvas-wrap" style="margin-top:8px;">
       <canvas id="profileCanvas"></canvas>
@@ -677,6 +686,19 @@ let qaLastSoil='silte';
 let lastCalcData=null; // para rederenhar o chart ao mudar escala
 let fsActive=null; // 'profile' | 'chart'
 let showProfileShapes=true; // toggle "Mostrar perfil" da seção da estaca — ativo por padrão
+// Traçados no perfil estratigráfico: rLi desativado e NSPT ativado por padrão
+let showProfileRli=false;
+let showProfileNspt=true;
+function toggleProfileTrace(which){
+  if(which==='rli'){
+    showProfileRli=!showProfileRli;
+    document.getElementById('rliToggleBtn').classList.toggle('on',showProfileRli);
+  } else if(which==='nspt'){
+    showProfileNspt=!showProfileNspt;
+    document.getElementById('nsptToggleBtn').classList.toggle('on',showProfileNspt);
+  }
+  drawProfile();
+}
 
 // ═══════════════════════════════════════
 // ESTACAS PERSONALIZADAS
@@ -855,6 +877,126 @@ function clearAll(){
 }
 
 // ═══════════════════════════════════════
+// EXPORTAR / IMPORTAR PROJETO (sondagens + configurações)
+// Salva tudo em um arquivo .json para retomar o trabalho depois sem
+// precisar redigitar as cotas de SPT.
+// ═══════════════════════════════════════
+function exportProject(){
+  const data={
+    version:1,
+    exportedAt:new Date().toISOString(),
+    soundings:SOUNDINGS,
+    activeSoundingIdx,
+    customPiles:CUSTOM_PILES,
+    selectedPileId:selectedPile.id,
+    mistaAtiva,
+    segmentos,
+    inputs:{
+      depth:document.getElementById('depth').value,
+      loadTotal:document.getElementById('loadTotal').value,
+      pileCount:document.getElementById('pileCount').value,
+      fsType:document.getElementById('fsType').value,
+      customFS:document.getElementById('customFS').value,
+      profileNScale:document.getElementById('profileNScale').value,
+      chartScale:document.getElementById('chartScale').value,
+      showProfileRli,
+      showProfileNspt,
+    }
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const stamp=new Date().toISOString().slice(0,10);
+  a.href=url;
+  a.download=`decourt_perfil_${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+function importProject(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    let data;
+    try{
+      data=JSON.parse(e.target.result);
+    }catch(err){
+      alert('Arquivo inválido: não foi possível ler o JSON do projeto.');
+      return;
+    }
+    if(!data||!Array.isArray(data.soundings)||data.soundings.length===0){
+      alert('Arquivo inválido: não contém sondagens.');
+      return;
+    }
+    if(!confirm('Carregar este projeto vai substituir as sondagens e configurações atuais. Continuar?'))return;
+
+    // Restaurar estacas personalizadas primeiro (podem ser referenciadas pela estaca selecionada/segmentos)
+    if(Array.isArray(data.customPiles)){
+      CUSTOM_PILES=data.customPiles;
+      saveCustomPilesToStorage();
+    }
+
+    // Restaurar sondagens
+    SOUNDINGS=data.soundings.map(s=>({id:s.id||Date.now()+Math.random(),name:s.name||'SP1',rows:s.rows||[]}));
+    activeSoundingIdx=Math.min(data.activeSoundingIdx||0,SOUNDINGS.length-1);
+    syncSptRowsRef();
+
+    // Restaurar estaca selecionada (com fallback se o id não existir mais)
+    if(data.selectedPileId){
+      const found=getAllPiles().find(p=>p.id===data.selectedPileId);
+      if(found)selectedPile=found;
+    }
+
+    // Restaurar estaca mista/segmentos
+    mistaAtiva=!!data.mistaAtiva;
+    segmentos=Array.isArray(data.segmentos)?data.segmentos:[];
+    document.getElementById('mistaCheck').checked=mistaAtiva;
+    document.getElementById('mistaToggleRow').classList.toggle('on',mistaAtiva);
+    document.getElementById('mistaWrap').classList.toggle('hidden',!mistaAtiva);
+    renderSegmentos();
+    updateMistaBadge();
+
+    // Restaurar inputs
+    const inp=data.inputs||{};
+    if(inp.depth!=null)document.getElementById('depth').value=inp.depth;
+    if(inp.loadTotal!=null)document.getElementById('loadTotal').value=inp.loadTotal;
+    if(inp.pileCount!=null)document.getElementById('pileCount').value=inp.pileCount;
+    if(inp.fsType!=null)document.getElementById('fsType').value=inp.fsType;
+    if(inp.customFS!=null)document.getElementById('customFS').value=inp.customFS;
+    if(inp.profileNScale!=null){
+      document.getElementById('profileNScale').value=inp.profileNScale;
+      const lbl=document.getElementById('profileNScaleVal');
+      if(lbl)lbl.textContent=inp.profileNScale;
+    }
+    if(inp.chartScale!=null){
+      document.getElementById('chartScale').value=inp.chartScale;
+      const lbl=document.getElementById('chartScaleVal');
+      if(lbl)lbl.textContent=inp.chartScale+' tf';
+    }
+    if(inp.showProfileRli!=null){
+      showProfileRli=!!inp.showProfileRli;
+      document.getElementById('rliToggleBtn').classList.toggle('on',showProfileRli);
+    }
+    if(inp.showProfileNspt!=null){
+      showProfileNspt=!!inp.showProfileNspt;
+      document.getElementById('nsptToggleBtn').classList.toggle('on',showProfileNspt);
+    }
+    toggleCustomFS();
+
+    // Re-renderizar tudo
+    renderPiles();
+    renderSoundingTabs();
+    renderRows();
+    drawProfile();
+
+    // Limpa o input de arquivo para permitir reimportar o mesmo arquivo depois
+    document.getElementById('importProjectInput').value='';
+  };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════
 // FULLSCREEN
 // ═══════════════════════════════════════
 function openFullscreen(type){
@@ -866,12 +1008,12 @@ function openFullscreen(type){
   area.innerHTML='';
 
   if(type==='profile'){
-    document.getElementById('fsTitle').textContent='Perfil estratigráfico & rLi';
+    document.getElementById('fsTitle').textContent='Perfil estratigráfico';
     // Controle de escala N
     const curScale=document.getElementById('profileNScale').value;
     controls.innerHTML=`
       <label>Escala N máx.</label>
-      <input type="range" min="20" max="100" step="5" value="${curScale}"
+      <input type="range" min="20" max="200" step="5" value="${curScale}"
         class='fs-range' oninput="document.getElementById('profileNScale').value=this.value;
                  document.getElementById('profileNScaleVal').textContent=this.value;
                  this.parentElement.querySelector('.fs-scale-val').textContent=this.value;
@@ -1247,13 +1389,15 @@ function drawProfileOnCanvas(canvas){
   ctx.clearRect(0,0,W,H);
 
   const PAD_L=44,PAD_T=30,PAD_B=20;
-  const profW=56,profX=PAD_L;
+  const showRightPanel=showProfileRli||showProfileNspt;
+  // Sem traçados ativos, a coluna do perfil ocupa mais largura disponível.
+  const profW=56;
+  const profX=PAD_L;
   const chartH=H-PAD_T-PAD_B;
   const scale=chartH/maxD;
-  const GAP=6,rliX=profX+profW+GAP,rliW=W-rliX-4;
+  const GAP=6,rliX=profX+profW+GAP,rliW=Math.max(W-rliX-4,0);
 
   const rliVals=rows.map(r=>{const Nc=Math.max(r.nspt,3);return Nc/3+1;});
-  const maxRli=maxNScale/3+1; // usa escala controlada pelo slider
 
   ctx.fillStyle=cssVar('--canvas-bg');ctx.fillRect(0,0,W,H);
 
@@ -1272,9 +1416,21 @@ function drawProfileOnCanvas(canvas){
   ctx.strokeStyle=ink(.4);ctx.lineWidth=1;
   for(let x=PAD_L-8;x<profX+profW+4;x+=6){ctx.beginPath();ctx.moveTo(x,PAD_T);ctx.lineTo(x-5,PAD_T-6);ctx.stroke();}
   ctx.fillStyle=ink(.6);ctx.font='bold 8px monospace';ctx.textAlign='left';
-  ctx.fillText('Sup.',profX+profW+6,PAD_T-4);
-  ctx.fillStyle='rgba(93,173,226,.7)';ctx.font='bold 8px monospace';ctx.textAlign='center';
-  ctx.fillText('rLi (tf/m²)',rliX+rliW/2,PAD_T-10);
+  ctx.fillText('Sup.',profX+profW+4,PAD_T-4);
+  // Rótulos do painel de traçados (rLi e/ou NSPT) — eixo único em "N" (escala N do slider)
+  if(showRightPanel){
+    ctx.font='bold 8px monospace';
+    ctx.textAlign='left';ctx.fillStyle=ink(.45);ctx.fillText('N',rliX,PAD_T-12);
+    if(showProfileRli&&showProfileNspt){
+      ctx.textAlign='right';
+      ctx.fillStyle='rgba(93,173,226,.8)';ctx.fillText('— rLi',rliX+rliW-38,PAD_T-12);
+      ctx.fillStyle='rgba(243,156,18,.85)';ctx.fillText('- - NSPT',rliX+rliW,PAD_T-12);
+    } else if(showProfileRli){
+      ctx.textAlign='right';ctx.fillStyle='rgba(93,173,226,.8)';ctx.fillText('— rLi',rliX+rliW,PAD_T-12);
+    } else if(showProfileNspt){
+      ctx.textAlign='right';ctx.fillStyle='rgba(243,156,18,.85)';ctx.fillText('- - NSPT',rliX+rliW,PAD_T-12);
+    }
+  }
 
   // Camadas
   if(rows.length>0){
@@ -1298,32 +1454,58 @@ function drawProfileOnCanvas(canvas){
     });
     const totalD=rows[rows.length-1].depth;
     ctx.strokeStyle=ink(.2);ctx.lineWidth=1.2;ctx.strokeRect(profX,PAD_T,profW,totalD*scale);
-    // Linha separadora rLi
-    ctx.strokeStyle='rgba(93,173,226,.15)';ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(rliX,PAD_T);ctx.lineTo(rliX,PAD_T+totalD*scale);ctx.stroke();
-    // Escala X rLi
-    ctx.fillStyle='rgba(93,173,226,.5)';ctx.font='8px monospace';ctx.textAlign='center';
-    const rliTick=niceStep(maxRli,3);
-    for(let v=0;v<=maxRli;v+=rliTick){
-      const xT=rliX+v/maxRli*rliW;
-      ctx.fillText(v.toFixed(0),xT,PAD_T-2);
-      ctx.strokeStyle='rgba(93,173,226,.1)';ctx.lineWidth=.5;
-      ctx.beginPath();ctx.moveTo(xT,PAD_T);ctx.lineTo(xT,PAD_T+totalD*scale);ctx.stroke();
+
+    if(showRightPanel){
+      // Linha separadora do painel de traçados
+      ctx.strokeStyle=ink(.1);ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(rliX,PAD_T);ctx.lineTo(rliX,PAD_T+totalD*scale);ctx.stroke();
+
+      // ── Eixo único (escala N), compartilhado por rLi e NSPT ──
+      // rLi = N/3+1  →  N = (rLi-1)*3, então ambos são plotados na mesma régua em N.
+      const axisColor=(showProfileRli&&showProfileNspt)?ink(.4):(showProfileRli?'rgba(93,173,226,.5)':'rgba(243,156,18,.55)');
+      ctx.fillStyle=axisColor;ctx.font='8px monospace';ctx.textAlign='center';
+      const tick=niceStep(maxNScale,3);
+      for(let v=0;v<=maxNScale;v+=tick){
+        const xT=rliX+v/maxNScale*rliW;
+        ctx.fillText(v.toFixed(0),xT,PAD_T-2);
+        ctx.strokeStyle=ink(.06);ctx.lineWidth=.5;
+        ctx.beginPath();ctx.moveTo(xT,PAD_T);ctx.lineTo(xT,PAD_T+totalD*scale);ctx.stroke();
+      }
     }
-    // Linha rLi
-    const pts=[];let pPrevD=0;
-    rows.forEach((r,ri)=>{
-      const midD=(pPrevD+r.depth)/2;
-      const rLi=Math.min(rliVals[ri],maxRli); // clamp à escala
-      pts.push({x:rliX+rLi/maxRli*rliW,y:PAD_T+midD*scale});
-      pPrevD=r.depth;
-    });
-    if(pts.length>0){
-      ctx.beginPath();ctx.moveTo(rliX,pts[0].y);pts.forEach(p=>ctx.lineTo(p.x,p.y));ctx.lineTo(rliX,pts[pts.length-1].y);ctx.closePath();
-      ctx.fillStyle='rgba(93,173,226,.08)';ctx.fill();
-      ctx.beginPath();pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
-      ctx.strokeStyle='rgba(93,173,226,.75)';ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.stroke();
-      pts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,2.5,0,Math.PI*2);ctx.fillStyle='rgba(93,173,226,.85)';ctx.fill();});
+
+    // ── Traçado rLi (plotado no eixo N: posição = (rLi-1)*3) ──
+    if(showProfileRli&&rliW>0){
+      const pts=[];let pPrevD=0;
+      rows.forEach((r,ri)=>{
+        const midD=(pPrevD+r.depth)/2;
+        const rLiAsN=Math.min((rliVals[ri]-1)*3,maxNScale); // converte rLi para a posição equivalente em N
+        pts.push({x:rliX+rLiAsN/maxNScale*rliW,y:PAD_T+midD*scale});
+        pPrevD=r.depth;
+      });
+      if(pts.length>0){
+        ctx.beginPath();ctx.moveTo(rliX,pts[0].y);pts.forEach(p=>ctx.lineTo(p.x,p.y));ctx.lineTo(rliX,pts[pts.length-1].y);ctx.closePath();
+        ctx.fillStyle='rgba(93,173,226,.08)';ctx.fill();
+        ctx.beginPath();pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+        ctx.strokeStyle='rgba(93,173,226,.75)';ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.stroke();
+        pts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,2.5,0,Math.PI*2);ctx.fillStyle='rgba(93,173,226,.85)';ctx.fill();});
+      }
+    }
+
+    // ── Traçado NSPT (plotado diretamente no eixo N) ──
+    if(showProfileNspt&&rliW>0){
+      const pts=[];let pPrevD=0;
+      rows.forEach((r,ri)=>{
+        const midD=(pPrevD+r.depth)/2;
+        const nVal=Math.min(r.nspt,maxNScale); // clamp à escala
+        pts.push({x:rliX+nVal/maxNScale*rliW,y:PAD_T+midD*scale});
+        pPrevD=r.depth;
+      });
+      if(pts.length>0){
+        ctx.beginPath();pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+        ctx.strokeStyle='rgba(243,156,18,.85)';ctx.lineWidth=1.5;ctx.lineJoin='round';
+        ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+        pts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,2.5,0,Math.PI*2);ctx.fillStyle='rgba(243,156,18,.95)';ctx.fill();});
+      }
     }
   }
 
