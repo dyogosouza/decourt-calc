@@ -294,6 +294,7 @@ canvas{display:block;width:100%;border-radius:9px;border:1px solid var(--border)
     <button class="tab-btn" onclick="filterCat(this,'pre-moldada')">Walter Lopes - Pré-moldada</button>
     <button class="tab-btn" onclick="filterCat(this,'pre-moldada-ta')">T&A - Pré moldada</button>
     <button class="tab-btn" onclick="filterCat(this,'escavada-cl')">Gerdau - Metálica</button>
+    <button class="tab-btn" onclick="filterCat(this,'helice-continua')">Hélice Contínua</button>
     <button class="tab-btn" onclick="filterCat(this,'personalizado')">Personalizado</button>
   </div>
   <div class="search-wrap" style="display:flex;gap:8px;margin-bottom:8px;">
@@ -553,9 +554,9 @@ canvas{display:block;width:100%;border-radius:9px;border:1px solid var(--border)
 // TABELAS
 // ═══════════════════════════════════════
 const AB_TABLE={
-  'argila':{'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00}},
-  'silte':  {'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00}},
-  'areia':  {'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00}},
+  'argila':{'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00},'helice-continua':{a:0.30,b:0.90}},
+  'silte':  {'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00},'helice-continua':{a:0.30,b:0.90}},
+  'areia':  {'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00},'helice-continua':{a:0.30,b:0.90}},
 };
 const SOILS=[
   {id:'areia-fina',  label:'Areia fina',    group:'areia', color:'#4a3a24',hatch:'dots'},
@@ -574,16 +575,6 @@ const KP_TABLE={'argila':12,'silte':20,'silte-a':25,'areia':40};
 // hipóteses/coeficientes o método Décourt-Quaresma está aplicando para
 // cada tipo de estaca. Os valores de α e β efetivos vêm de AB_TABLE
 // (por tipo de solo); aqui documentamos o racional/texto explicativo.
-//
-// PARA ADICIONAR HÉLICE CONTÍNUA NO FUTURO:
-//  1. Adicionar uma entrada 'helice-continua' neste objeto PTYPE_INFO,
-//     com os textos explicativos (alfa/beta, área de ponta considerada etc).
-//  2. Adicionar a linha correspondente em AB_TABLE (para 'argila','silte','areia')
-//     com os coeficientes α e β da hélice contínua.
-//  3. Adicionar as estacas de hélice contínua no array PILES com
-//     cat:'helice-continua', ptype:'helice-continua'.
-//  4. Adicionar um botão de aba em #catTabs: 
-//     <button class="tab-btn" onclick="filterCat(this,'helice-continua')">Hélice Contínua</button>
 // ═══════════════════════════════════════
 const PTYPE_INFO={
   'pre-moldada':{
@@ -602,11 +593,10 @@ const PTYPE_INFO={
     label:'Estaca personalizada',
     text:'Dimensões inseridas manualmente pelo usuário. Adota-se, por padrão, α=β=1,00 (coeficientes de estaca cravada). Revise esses coeficientes em AB_TABLE caso o tipo de execução real seja diferente (ex.: estaca escavada, hélice contínua etc.).'
   },
-  // GANCHO PARA HÉLICE CONTÍNUA (adicionar aqui no futuro):
-  // 'helice-continua':{
-  //   label:'Hélice contínua',
-  //   text:'Estaca executada por perfuração com hélice contínua e injeção de concreto. Coeficientes α e β específicos (tipicamente menores que 1,00, conforme literatura). Área de ponta = área da seção circular cheia (diâmetro nominal da hélice).'
-  // },
+  'helice-continua':{
+    label:'Hélice contínua',
+    text:'Estaca executada por perfuração com hélice contínua e injeção de concreto (sem deslocamento de solo). Adota-se α=0,30 e β=0,90, conforme referências usuais do método Décourt-Quaresma para esse tipo de execução — valores tipicamente menores que 1,00 por não haver cravação/compactação do solo ao redor do fuste e da ponta. Área de ponta = área da seção circular cheia (diâmetro nominal da hélice). Esses coeficientes são uma referência inicial: revise-os caso seu professor/bibliografia indique valores diferentes.'
+  },
 };
 const PILES=[
 // Hexagonais Protendidas Vazadas - Walter Lopes
@@ -650,6 +640,17 @@ const PILES=[
   {id:'HP250x62', cat:'escavada-cl',name:'HP 250x62,0',company:'Gerdau',d:.246,perimeter:2*(.246+.256),area:.246*.256,ptype:'escavada-cl',desc:'Perfil H cravado, 246x256mm, 62,0kg/m',vElem:null},
   {id:'HP310x125',cat:'escavada-cl',name:'HP 310x125,0',company:'Gerdau',d:.312,perimeter:2*(.312+.312),area:.312*.312,ptype:'escavada-cl',desc:'Perfil H cravado, 312x312mm, 125,0kg/m',vElem:null},
   {id:'HP360x152',cat:'escavada-cl',name:'HP 360x152,0',company:'Gerdau',d:.361,perimeter:2*(.361+.378),area:.361*.378,ptype:'escavada-cl',desc:'Perfil H cravado, 361x378mm, 152,0kg/m',vElem:null},
+
+// Hélice contínua — estaca escavada com injeção de concreto sob pressão (sem deslocamento de solo).
+// Perímetro e área de ponta calculados como seção circular cheia (diâmetro nominal da hélice).
+// vElem:null pois a carga admissível estrutural depende do fck do concreto e da armadura
+// específicas do projeto (não há valor de catálogo genérico) — apenas o terreno é verificado.
+  {id:'HC300',cat:'helice-continua',name:'Hélice Contínua Ø30cm',company:'Genérico',d:0.300,perimeter:0.9425,area:0.0707,ptype:'helice-continua',desc:'Hélice contínua Ø300mm, seção circular cheia',vElem:null},
+  {id:'HC400',cat:'helice-continua',name:'Hélice Contínua Ø40cm',company:'Genérico',d:0.400,perimeter:1.2566,area:0.1257,ptype:'helice-continua',desc:'Hélice contínua Ø400mm, seção circular cheia',vElem:null},
+  {id:'HC500',cat:'helice-continua',name:'Hélice Contínua Ø50cm',company:'Genérico',d:0.500,perimeter:1.5708,area:0.1963,ptype:'helice-continua',desc:'Hélice contínua Ø500mm, seção circular cheia',vElem:null},
+  {id:'HC600',cat:'helice-continua',name:'Hélice Contínua Ø60cm',company:'Genérico',d:0.600,perimeter:1.8850,area:0.2827,ptype:'helice-continua',desc:'Hélice contínua Ø600mm, seção circular cheia',vElem:null},
+  {id:'HC700',cat:'helice-continua',name:'Hélice Contínua Ø70cm',company:'Genérico',d:0.700,perimeter:2.1991,area:0.3848,ptype:'helice-continua',desc:'Hélice contínua Ø700mm, seção circular cheia',vElem:null},
+  {id:'HC800',cat:'helice-continua',name:'Hélice Contínua Ø80cm',company:'Genérico',d:0.800,perimeter:2.5133,area:0.5027,ptype:'helice-continua',desc:'Hélice contínua Ø800mm, seção circular cheia',vElem:null},
 ];
 
 // ═══════════════════════════════════════
