@@ -503,9 +503,9 @@ canvas{display:block;width:100%;border-radius:9px;border:1px solid var(--border)
     <!-- Escala carga para o gráfico -->
     <div class="scale-row" style="margin-bottom:8px;">
       <label>Escala carga</label>
-      <input type="range" id="chartScale" min="50" max="500" step="25" value="200"
+      <input type="range" id="chartScale" min="200" max="1500" step="100" value="600"
         oninput="document.getElementById('chartScaleVal').textContent=this.value+' tf';if(lastCalcData)drawChart(...lastCalcData)">
-      <span class="scale-val" id="chartScaleVal">200 tf</span>
+      <span class="scale-val" id="chartScaleVal">600 tf</span>
     </div>
     <div class="canvas-wrap">
       <canvas id="chartCanvas"></canvas>
@@ -554,9 +554,9 @@ canvas{display:block;width:100%;border-radius:9px;border:1px solid var(--border)
 // TABELAS
 // ═══════════════════════════════════════
 const AB_TABLE={
-  'argila':{'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00},'helice-continua':{a:0.30,b:0.90}},
-  'silte':  {'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00},'helice-continua':{a:0.30,b:0.90}},
-  'areia':  {'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00},'helice-continua':{a:0.30,b:0.90}},
+  'argila':{'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00},'helice-continua':{a:0.30,b:1.00}},
+  'silte':  {'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00},'helice-continua':{a:0.30,b:1.00}},
+  'areia':  {'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00},'helice-continua':{a:0.30,b:1.00}},
 };
 const SOILS=[
   {id:'areia-fina',  label:'Areia fina',    group:'areia', color:'#4a3a24',hatch:'dots'},
@@ -572,21 +572,21 @@ const KP_TABLE={'argila':12,'silte':20,'silte-a':25,'areia':40};
 // ═══════════════════════════════════════
 // CONDIÇÕES CONSIDERADAS POR TIPO DE ESTACA (ptype)
 // Usado para exibir ao usuário, na seção "Condições consideradas", quais
-// hipóteses/coeficientes o método Décourt-Quaresma está aplicando para
+// hipóteses/coeficientes o método Décourt está aplicando para
 // cada tipo de estaca. Os valores de α e β efetivos vêm de AB_TABLE
 // (por tipo de solo); aqui documentamos o racional/texto explicativo.
 // ═══════════════════════════════════════
 const PTYPE_INFO={
   'pre-moldada':{
-    label:'Pré-moldada cravada (Walter Lopes)',
+    label:'Pré-moldada cravada (seção hexagonal/quadrada vazada)',
     text:'Estaca cravada por percussão/prensagem. Adota-se α=β=1,00 (estaca padrão de referência do método Décourt). Área de ponta = área líquida de concreto da seção vazada (hexagonal ou quadrada).'
   },
   'pre-moldada-ta':{
-    label:'Pré-moldada cravada (T&A)',
+    label:'Pré-moldada cravada (seção hexagonal/circular vazada)',
     text:'Estaca cravada (hexagonal ou circular vazada). Adota-se α=β=1,00, mesmo racional da pré-moldada de referência. Área de ponta considerada como a área externa total da seção (efeito de "tampão de solo" / soil plug formado durante a cravação, que faz a ponta se comportar como seção cheia).'
   },
   'escavada-cl':{
-    label:'Perfil metálico cravado (Gerdau HP)',
+    label:'Perfil metálico cravado',
     text:'Perfil H cravado por percussão. Adota-se α=β=1,00 (mesmo racional de estaca cravada). Área de ponta considerada como a área do retângulo envoltório (b×d) do perfil — por atrito do solo durante a cravação, a ponta tende a se comportar como uma seção retangular cheia, não como a área de aço real.'
   },
   'personalizado':{
@@ -595,7 +595,7 @@ const PTYPE_INFO={
   },
   'helice-continua':{
     label:'Hélice contínua',
-    text:'Estaca executada por perfuração com hélice contínua e injeção de concreto (sem deslocamento de solo). Adota-se α=0,30 e β=0,90, conforme referências usuais do método Décourt-Quaresma para esse tipo de execução — valores tipicamente menores que 1,00 por não haver cravação/compactação do solo ao redor do fuste e da ponta. Área de ponta = área da seção circular cheia (diâmetro nominal da hélice). Esses coeficientes são uma referência inicial: revise-os caso seu professor/bibliografia indique valores diferentes.'
+    text:'Estaca executada por perfuração com hélice contínua e injeção de concreto (sem deslocamento de solo). Adota-se α=0,30 e β=1,00, conforme tabela de referência do método Décourt para esse tipo de execução — o α reduzido reflete a ausência de cravação/compactação do solo ao redor do fuste e da ponta. Área de ponta = área da seção circular cheia (diâmetro nominal da hélice).'
   },
 };
 const PILES=[
@@ -796,6 +796,21 @@ function applyStoredTheme(){
     drawProfile();
     if(lastCalcData)drawChart(...lastCalcData);
   });
+  // Rede de segurança: garante recalcular com QUALQUER mudança em campos do
+  // formulário (perfil, sondagens, FS, número de estacas, carga total, etc.),
+  // mesmo que algum onchange/oninput específico seja perdido em edições futuras.
+  document.addEventListener('input',e=>{
+    const t=e.target;
+    if(t&&(t.tagName==='INPUT'||t.tagName==='SELECT')&&!t.closest('#fullscreenOverlay')){
+      recalc();
+    }
+  });
+  document.addEventListener('change',e=>{
+    const t=e.target;
+    if(t&&(t.tagName==='INPUT'||t.tagName==='SELECT')&&!t.closest('#fullscreenOverlay')){
+      recalc();
+    }
+  });
   setTimeout(drawProfile,120);
 })();
 
@@ -881,7 +896,7 @@ function openFullscreen(type){
     const curScale=document.getElementById('chartScale').value;
     controls.innerHTML=`
       <label>Escala carga máx. (tf)</label>
-      <input type="range" min="50" max="500" step="25" value="${curScale}"
+      <input type="range" min="200" max="1500" step="100" value="${curScale}"
         class='fs-range' oninput="document.getElementById('chartScale').value=this.value;
                  document.getElementById('chartScaleVal').textContent=this.value+' tf';
                  this.parentElement.querySelector('.fs-scale-val').textContent=this.value+' tf';
@@ -1489,10 +1504,14 @@ function calculate(){
 
 // Recalcula automaticamente; esconde resultados se não houver dados suficientes
 function recalc(){
-  const ok=calculate();
-  if(!ok){
-    document.getElementById('results').classList.add('hidden');
-    lastCalcData=null;
+  try{
+    const ok=calculate();
+    if(!ok){
+      document.getElementById('results').classList.add('hidden');
+      lastCalcData=null;
+    }
+  }catch(err){
+    console.error('Erro ao recalcular:',err);
   }
 }
 
