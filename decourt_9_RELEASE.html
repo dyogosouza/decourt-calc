@@ -1218,8 +1218,12 @@ function drawProfileOnCanvas(canvas){
   const maxD=Math.max(...(rows.length?rows.map(r=>r.depth):[0]),emb,1)+1;
   const maxNScale=parseInt(document.getElementById('profileNScale').value)||50;
 
-  const W=canvas.parentElement?.clientWidth||canvas.offsetWidth||220;
-  const H=Math.max(320,Math.min(900,maxD*16));
+  const parent=canvas.parentElement;
+  const isFS=canvas.id==='profileCanvasFS';
+  const W=parent?.clientWidth||canvas.offsetWidth||220;
+  // Em fullscreen, usa a altura real do container (responsivo à resolução da tela);
+  // no card normal, calcula altura proporcional à profundidade do perfil.
+  const H=isFS?Math.max(parent.clientHeight||320,200):Math.max(320,Math.min(900,maxD*16));
   canvas.width=W*devicePixelRatio;canvas.height=H*devicePixelRatio;
   canvas.style.width=W+'px';canvas.style.height=H+'px';
   const ctx=canvas.getContext('2d');
@@ -1352,10 +1356,6 @@ function drawProfile(){
 function drawProfileFS(){
   const c=document.getElementById('profileCanvasFS');
   if(!c)return;
-  // Usa tamanho do container fullscreen
-  const area=document.getElementById('fsCanvasArea');
-  c.style.width=area.clientWidth+'px';
-  c.style.height=(area.clientHeight)+'px';
   drawProfileOnCanvas(c);
 }
 
