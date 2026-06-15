@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora Décourt</title>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#0f1117;--card:rgba(255,255,255,0.06);--border:rgba(255,255,255,0.10);
+  --border-accent:rgba(52,211,120,0.35);--text:#e8ede9;--muted:rgba(200,215,205,0.55);
+  --accent:#2ecc71;--accent-dark:#1a9e53;--accent-dim:rgba(46,204,113,0.15);
+  --danger:#ff5f57;--warn:#f39c12;
+  --mono:'DM Mono',monospace;--sans:'Open Sans','Helvetica Neue',Helvetica,sans-serif;
+  --radius:14px;--blur:blur(28px) saturate(190%);
+  --canvas-bg:#111916;--canvas-ink:180,200,185;--canvas-ink-strong:220,235,225;--track-bg:rgba(255,255,255,.12);
+  --bg-grad-1:rgba(30,90,55,.35);--bg-grad-2:rgba(20,60,40,.25);
+  --fs-bg:#0a0f0c;--card-solid:#1a2420;--card-solid-translucent:rgba(15,17,23,.75);--header-bg:rgba(15,17,23,.40);
+}
+body.light{
+  --bg:#f4f7f5;--card:rgba(255,255,255,0.75);--border:rgba(20,40,30,0.10);
+  --border-accent:rgba(26,158,83,0.35);--text:#16241c;--muted:rgba(40,60,50,0.55);
+  --accent:#1a9e53;--accent-dark:#147a40;--accent-dim:rgba(26,158,83,0.12);
+  --danger:#e0463f;--warn:#c4790a;
+  --canvas-bg:#ffffff;--canvas-ink:40,55,48;--canvas-ink-strong:20,32,26;--track-bg:rgba(20,40,30,.16);
+  --bg-grad-1:rgba(46,204,113,.12);--bg-grad-2:rgba(46,204,113,.08);
+  --fs-bg:#f4f7f5;--card-solid:#ffffff;--card-solid-translucent:rgba(255,255,255,.75);--header-bg:rgba(255,255,255,.40);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);
+  background-image:radial-gradient(ellipse 80% 60% at 20% 10%,var(--bg-grad-1) 0%,transparent 65%),
+    radial-gradient(ellipse 60% 50% at 80% 80%,var(--bg-grad-2) 0%,transparent 60%);
+  background-attachment:fixed;color:var(--text);min-height:100vh;
+  transition:background-color .25s,color .25s}
+body,body *{transition:background-color .2s,color .2s,border-color .2s}
+header{background:var(--header-bg);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border-bottom:1px solid var(--border);padding:13px 20px 11px;position:sticky;top:0;z-index:50}
+header h1{font-size:16px;font-weight:700;color:var(--text)}
+header p{font-size:11px;color:var(--muted);margin-top:2px}
+.theme-toggle{flex-shrink:0;width:36px;height:36px;border-radius:10px;border:1px solid var(--border);
+  background:rgba(255,255,255,.04);font-size:16px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:all .15s}
+.theme-toggle:hover{border-color:var(--border-accent)}
+main{padding:16px;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--border);border-radius:var(--radius);padding:16px;
+  box-shadow:0 4px 24px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.08)}
+.card-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:12px}
+label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:500}
+input,select{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:9px;
+  font-size:14px;font-family:var(--mono);color:var(--text);background:rgba(255,255,255,.05);
+  outline:none;transition:border-color .18s,background .18s;-webkit-appearance:none}
+input:focus,select:focus{border-color:var(--border-accent);background:rgba(46,204,113,.05);
+  box-shadow:0 0 0 3px rgba(46,204,113,.12)}
+select{font-family:var(--sans);cursor:pointer}
+select option{background:var(--card-solid,#1a2420);color:var(--text)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* Contador de número de estacas + carga por estaca */
+.pile-count-row{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.pile-count-btn{width:38px;height:38px;border-radius:9px;border:1px solid var(--border);
+  background:rgba(255,255,255,.04);color:var(--text);font-size:18px;font-weight:700;
+  cursor:pointer;transition:all .15s;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--sans)}
+.pile-count-btn:hover{border-color:var(--border-accent);color:var(--accent);background:rgba(46,204,113,.08)}
+.pile-count-row input#pileCount{width:64px;text-align:center;flex-shrink:0}
+.pile-count-result{flex:1;font-size:13px;color:var(--muted);text-align:right;min-width:140px}
+.pile-count-result b{color:var(--accent);font-family:var(--mono);font-size:15px}
+/* Tabs */
+.pile-cat-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tab-btn{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,.04);
+  font-size:12px;font-family:var(--sans);color:var(--muted);cursor:pointer;transition:all .15s;font-weight:500}
+.tab-btn:hover{border-color:var(--border-accent);color:var(--accent)}
+.tab-btn.active{background:rgba(46,204,113,.18);color:var(--accent);border-color:var(--border-accent);box-shadow:0 0 12px rgba(46,204,113,.15)}
+/* Abas de sondagem (SP1, SP2...) */
+.sounding-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.sounding-tab{display:flex;align-items:center;gap:6px;padding:5px 6px 5px 12px;border-radius:20px;
+  border:1px solid var(--border);background:rgba(255,255,255,.04);font-size:12px;
+  font-family:var(--sans);color:var(--muted);cursor:pointer;transition:all .15s;font-weight:500}
+.sounding-tab:hover{border-color:var(--border-accent);color:var(--accent)}
+.sounding-tab.active{background:rgba(46,204,113,.18);color:var(--accent);border-color:var(--border-accent)}
+.sounding-tab .del-sounding{width:18px;height:18px;border-radius:50%;border:none;background:transparent;
+  color:inherit;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  opacity:.6;transition:opacity .15s}
+.sounding-tab .del-sounding:hover{opacity:1;color:var(--danger)}
+.sounding-tab-name{user-select:none}
+.sounding-tab-name-input{width:60px;background:transparent;border:none;border-bottom:1px solid var(--accent);
+  color:var(--accent);font-size:12px;font-family:var(--sans);font-weight:600;outline:none;padding:0;
+  margin:0 2px}
+.sounding-tab-add{width:28px;height:28px;border-radius:50%;border:1px dashed var(--border-accent);
+  background:rgba(46,204,113,.05);color:var(--accent);font-size:15px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.sounding-tab-add:hover{background:rgba(46,204,113,.12)}
+/* Estaca cards */
+.pile-card{border:1px solid var(--border);border-radius:9px;padding:10px 12px;cursor:pointer;
+  transition:all .15s;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;
+  background:rgba(255,255,255,.03)}
+.pile-card:hover{border-color:var(--border-accent);background:var(--accent-dim)}
+.pile-card.selected{border-color:var(--accent-dark);background:rgba(46,204,113,.12);box-shadow:0 0 0 1px rgba(46,204,113,.2)}
+.pile-card-name{font-size:13px;font-weight:600;color:var(--text)}
+.pile-card-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.pile-card-specs{text-align:right;font-family:var(--mono);font-size:12px;color:var(--accent)}
+.pile-shape{flex-shrink:0;width:34px;height:34px;display:flex;align-items:center;justify-content:center}
+.shape-toggle-btn{padding:9px 12px;border-radius:9px;border:1px solid var(--border);background:rgba(255,255,255,.04);
+  color:var(--muted);font-size:12px;font-family:var(--sans);font-weight:600;cursor:pointer;
+  white-space:nowrap;transition:all .15s}
+.shape-toggle-btn:hover{border-color:var(--border-accent);color:var(--text)}
+.shape-toggle-btn.on{background:rgba(46,204,113,.18);color:var(--accent);border-color:var(--border-accent)}
+/* Estaca personalizada */
+.add-custom-pile-btn{width:100%;margin-top:8px;padding:9px 12px;border-radius:9px;
+  border:1px dashed var(--border-accent);background:rgba(46,204,113,.05);color:var(--accent);
+  font-size:12px;font-family:var(--sans);font-weight:600;cursor:pointer;transition:all .15s}
+.add-custom-pile-btn:hover{background:rgba(46,204,113,.10)}
+.custom-pile-form{margin-top:10px;padding:12px;border-radius:9px;border:1px solid var(--border);
+  background:rgba(255,255,255,.03);display:flex;flex-direction:column;gap:8px}
+/* Switch mista */
+.mista-toggle{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 14px;
+  border-radius:9px;border:1px solid var(--border);cursor:pointer;transition:all .2s;
+  background:rgba(255,255,255,.03);user-select:none}
+.mista-toggle.on{background:rgba(243,156,18,.10);border-color:rgba(243,156,18,.35)}
+.switch{position:relative;width:38px;height:22px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.slider{position:absolute;inset:0;border-radius:22px;background:var(--track-bg);transition:.25s;cursor:pointer}
+.slider::before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;
+  border-radius:50%;background:#fff;transition:.25s;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.switch input:checked+.slider{background:var(--warn)}
+.switch input:checked+.slider::before{transform:translateX(16px)}
+.mista-label{font-size:13px;font-weight:600;color:var(--text);flex:1}
+.seg-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;
+  background:rgba(243,156,18,.2);color:var(--warn);border:1px solid rgba(243,156,18,.3)}
+.seg-row{display:grid;grid-template-columns:80px 1fr 32px;gap:8px;align-items:end;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:9px;padding:8px 10px;margin-bottom:6px}
+.seg-label{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.add-seg-btn{display:flex;align-items:center;gap:6px;color:var(--warn);font-size:12px;
+  font-family:var(--sans);background:none;border:1px dashed rgba(243,156,18,.4);border-radius:8px;
+  cursor:pointer;padding:7px 12px;font-weight:600;transition:all .15s;width:100%;justify-content:center}
+.add-seg-btn:hover{background:rgba(243,156,18,.08)}
+/* SPT */
+.spt-header{display:grid;grid-template-columns:72px 1fr 52px 44px 44px 28px;
+  gap:4px;font-size:10px;color:var(--muted);font-weight:700;
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;padding:0 2px}
+.spt-row{display:grid;grid-template-columns:72px 1fr 52px 44px 44px 28px;
+  gap:4px;align-items:center;margin-bottom:5px}
+.spt-row input,.spt-row select{padding:7px 6px;font-size:13px}
+/* Quick add */
+.quick-add{display:grid;grid-template-columns:72px 1fr 52px auto;gap:6px;align-items:end;
+  background:rgba(46,204,113,.06);border:1px dashed rgba(46,204,113,.25);border-radius:10px;
+  padding:10px;margin-bottom:8px}
+.quick-add input,.quick-add select{padding:8px 8px;font-size:14px}
+.quick-add-btn{padding:8px 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;
+  font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s}
+.quick-add-btn:hover{background:var(--accent-dark)}
+.quick-add-btn:active{transform:scale(.97)}
+.del-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:none;
+  color:var(--muted);cursor:pointer;font-size:16px;display:flex;align-items:center;
+  justify-content:center;transition:all .15s;flex-shrink:0}
+.del-btn:hover{border-color:var(--danger);color:var(--danger)}
+.add-btn{display:flex;align-items:center;gap:6px;color:var(--accent);font-size:13px;
+  font-family:var(--sans);background:none;border:none;cursor:pointer;padding:6px 0;font-weight:600;
+  opacity:.85;transition:opacity .15s}
+.add-btn:hover{opacity:1}
+/* Botões de ação (limpar / tela cheia) */
+.action-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.action-btn{display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:8px;
+  font-size:12px;font-weight:600;font-family:var(--sans);cursor:pointer;border:1px solid var(--border);
+  background:rgba(255,255,255,.04);color:var(--muted);transition:all .15s}
+.action-btn:hover{border-color:var(--border-accent);color:var(--text)}
+.action-btn.danger{border-color:rgba(255,95,87,.3);color:var(--danger);background:rgba(255,95,87,.06)}
+.action-btn.danger:hover{background:rgba(255,95,87,.14)}
+/* Escala N — slider */
+.scale-row{display:flex;align-items:center;gap:10px;margin-top:10px;padding:8px 12px;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:9px}
+.scale-row label{margin:0;white-space:nowrap;font-size:11px}
+.scale-row input[type=range]{padding:0;border:none;background:transparent;
+  flex:1;-webkit-appearance:none;appearance:none;height:20px;cursor:pointer;background:transparent}
+.scale-row input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:var(--track-bg)}
+.scale-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;margin-top:-7px;background:var(--accent);border:none;box-shadow:0 0 6px rgba(46,204,113,.4);cursor:pointer}
+.scale-row input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--track-bg)}
+.scale-row input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;border:none;background:var(--accent);cursor:pointer}
+.scale-row input[type=range]:focus{box-shadow:none}
+.scale-val{font-family:var(--mono);font-size:12px;color:var(--accent);min-width:32px;text-align:right}
+/* Aviso de cálculo automático */
+.auto-calc-note{text-align:center;font-size:11px;color:var(--muted);padding:4px 0;
+  display:flex;align-items:center;justify-content:center;gap:6px}
+/* Limpar tudo */
+.clear-all-btn{width:100%;padding:13px;background:rgba(255,95,87,.08);color:var(--danger);
+  border:1px solid rgba(255,95,87,.25);border-radius:11px;font-size:15px;font-weight:700;
+  font-family:var(--sans);cursor:pointer;transition:all .18s;letter-spacing:.3px;margin-top:8px}
+.clear-all-btn:hover{background:rgba(255,95,87,.16);border-color:rgba(255,95,87,.45)}
+/* Resultado hero */
+.result-hero{background:linear-gradient(135deg,rgba(26,158,83,.55) 0%,rgba(20,100,55,.40) 100%);
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid rgba(46,204,113,.30);border-radius:var(--radius);padding:22px;color:#fff;margin-bottom:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.3),0 0 0 1px rgba(46,204,113,.15) inset}
+.result-hero-label{font-size:11px;opacity:.65;text-transform:uppercase;letter-spacing:1.2px;font-weight:600}
+.result-hero-val{font-size:44px;font-weight:700;font-family:var(--mono);line-height:1.1;color:#fff}
+.result-hero-unit{font-size:18px;opacity:.55}
+.result-hero-sub{font-size:11px;opacity:.6;margin-top:8px;font-family:var(--mono)}
+.result-split{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.split-card{background:var(--card);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--border);border-radius:11px;padding:14px}
+.split-card-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;font-weight:600}
+.split-card-val{font-size:24px;font-weight:700;font-family:var(--mono);color:var(--accent)}
+.split-card-unit{font-size:12px;color:var(--muted)}
+.FS-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:9px;font-size:13px;margin-top:8px}
+.FS-row.ok{background:rgba(46,204,113,.12);color:#6ee7a0;border:1px solid rgba(46,204,113,.25)}
+.FS-row.nok{background:rgba(255,95,87,.10);color:#ff8b87;border:1px solid rgba(255,95,87,.25)}
+.FS-val{font-family:var(--mono);font-size:20px;font-weight:700}
+/* Tabela */
+.table-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:9px}
+.table-scroll-wrap::-webkit-scrollbar{height:4px}
+.table-scroll-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px}
+table.result-table{border-collapse:collapse;font-size:11.5px;font-family:var(--mono);min-width:920px;width:100%}
+table.result-table th{background:rgba(46,204,113,.12);color:var(--accent);padding:7px 10px;
+  text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  white-space:nowrap;border-bottom:1px solid rgba(46,204,113,.2)}
+table.result-table th:first-child{text-align:left}
+table.result-table td{padding:6px 10px;text-align:right;color:var(--text);
+  border-bottom:1px solid rgba(255,255,255,.05);white-space:nowrap}
+table.result-table td:first-child{text-align:left;color:var(--muted)}
+table.result-table tr:last-child td{border-bottom:none}
+table.result-table tr:hover td{background:rgba(255,255,255,.03)}
+.td-vrup{color:var(--accent)!important;font-weight:600}
+.td-vadm{color:#5dade2!important}
+/* Fullscreen overlay para canvas */
+.canvas-wrap{position:relative}
+.fs-btn{position:absolute;top:6px;right:6px;padding:5px 10px;background:rgba(0,0,0,.5);
+  backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:7px;
+  color:var(--muted);font-size:11px;font-family:var(--sans);font-weight:600;cursor:pointer;
+  transition:all .15s;z-index:5}
+.fs-btn:hover{color:var(--text);border-color:var(--border-accent)}
+/* Fullscreen mode */
+.fullscreen-overlay{display:none;position:fixed;inset:0;background:var(--fs-bg);z-index:1000;
+  flex-direction:column;padding:12px}
+.fullscreen-overlay.open{display:flex}
+.fs-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-shrink:0}
+.fs-title{font-size:13px;font-weight:700;color:var(--text)}
+.fs-close{padding:6px 14px;background:rgba(255,255,255,.08);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:13px;font-family:var(--sans);cursor:pointer}
+.fs-canvas-area{flex:1;overflow:hidden;display:flex;align-items:stretch}
+.fs-canvas-area canvas{width:100%!important;height:100%!important;border-radius:10px;
+  border:1px solid var(--border)}
+/* Scale control em fullscreen */
+.fs-controls{display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-shrink:0;
+  padding:8px 12px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px}
+.fs-controls label{font-size:11px;color:var(--muted);white-space:nowrap;margin:0}
+.fs-controls input[type=range]{flex:1;padding:0;border:none;background:transparent;
+  flex:1;-webkit-appearance:none;appearance:none;height:20px;cursor:pointer;background:transparent}
+.fs-controls input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:var(--track-bg)}
+.fs-controls input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;margin-top:-7px;background:var(--accent);border:none;cursor:pointer}
+.fs-controls input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer}
+.fs-controls input[type=range]:focus{box-shadow:none}
+.fs-scale-val{font-family:var(--mono);font-size:12px;color:var(--accent);min-width:34px;text-align:right}
+.fs-range{flex:1;-webkit-appearance:none;appearance:none;height:20px;cursor:pointer;background:transparent;border:none;padding:0}
+.fs-range::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:var(--track-bg)}
+.fs-range::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;margin-top:-7px;background:var(--accent);border:none;cursor:pointer}
+.fs-range::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent);border:none;cursor:pointer}
+.hidden{display:none}
+.app-footer{margin-top:20px;padding:16px 20px;border-top:1px solid var(--border);
+  background:rgba(255,255,255,.02)}
+.footer-content{display:flex;gap:14px;align-items:flex-start;max-width:560px;margin:0 auto}
+.footer-img{width:56px;height:56px;border-radius:9px;object-fit:cover;flex-shrink:0;
+  border:1px solid var(--border);background:rgba(255,255,255,.04)}
+.footer-text{font-size:12px;color:var(--muted);line-height:1.5}
+.footer-text p{margin-bottom:2px}
+canvas{display:block;width:100%;border-radius:9px;border:1px solid var(--border)}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+    <div>
+      <h1>Calculadora de método Décourt <span style="color:var(--muted);font-weight:400;font-size:13px;">(v1.0)</span></h1>
+      <p>Aplicativo de cálculo para a disciplina de Fundações POLI-UPE 2026.1</p>
+    </div>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Alternar tema claro/escuro">
+      <svg id="themeIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="green" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+  </div>
+</header>
+<main>
+
+<!-- BLOCO 1 – ESTACA -->
+<div class="card">
+  <div class="card-title">Selecione a estaca proposta</div>
+  <div class="pile-cat-tabs" id="catTabs">
+    <button class="tab-btn active" onclick="filterCat(this,'todos')">Todas</button>
+    <button class="tab-btn" onclick="filterCat(this,'pre-moldada')">Walter Lopes - Pré-moldada</button>
+    <button class="tab-btn" onclick="filterCat(this,'pre-moldada-ta')">T&A - Pré moldada</button>
+    <button class="tab-btn" onclick="filterCat(this,'escavada-cl')">Gerdau - Metálica</button>
+    <button class="tab-btn" onclick="filterCat(this,'personalizado')">Personalizado</button>
+  </div>
+  <div class="search-wrap" style="display:flex;gap:8px;margin-bottom:8px;">
+    <input type="text" id="pileSearch" placeholder="Buscar estaca por nome…" style="flex:1;" oninput="renderPiles()">
+    <button class="shape-toggle-btn on" id="shapeToggleBtn" onclick="togglePileShapes()" title="Mostrar perfil da seção">Mostrar perfil</button>
+  </div>
+  <div id="pileList" style="max-height:220px;overflow-y:auto;"></div>
+  <button class="add-custom-pile-btn" onclick="toggleCustomPileForm()" id="customPileBtn">+ Adicionar estaca personalizada</button>
+  <div id="customPileForm" class="hidden custom-pile-form">
+    <div class="row2">
+      <div>
+        <label>Nome da estaca</label>
+        <input type="text" id="cp-name" placeholder="ex: Minha estaca 35cm">
+      </div>
+      <div>
+        <label>Empresa/Origem</label>
+        <input type="text" id="cp-company" placeholder="ex: Catálogo X">
+      </div>
+    </div>
+    <div class="row2">
+      <div>
+        <label>Dimensão característica (cm)</label>
+        <input type="number" id="cp-d" placeholder="ex: 35" step="0.1" min="0">
+      </div>
+      <div>
+        <label>Perímetro externo (cm)</label>
+        <input type="number" id="cp-perimeter" placeholder="ex: 110" step="0.1" min="0">
+      </div>
+    </div>
+    <div class="row2">
+      <div>
+        <label>Área de ponta considerada (cm²)</label>
+        <input type="number" id="cp-area" placeholder="ex: 962" step="0.1" min="0">
+      </div>
+      <div>
+        <label>Carga adm. estrutural V<sub>elem</sub> (tf) — opcional</label>
+        <input type="number" id="cp-velem" placeholder="ex: 100 (deixe vazio se não souber)" step="0.1" min="0">
+      </div>
+    </div>
+    <div>
+      <label>Descrição (opcional)</label>
+      <input type="text" id="cp-desc" placeholder="ex: Circular vazada, e=8cm">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="quick-add-btn" style="flex:1;" onclick="saveCustomPile()">Salvar estaca</button>
+      <button class="action-btn" onclick="toggleCustomPileForm()">Cancelar</button>
+    </div>
+  </div>
+  <div class="mista-toggle" id="mistaToggleRow" onclick="toggleMista()">
+    <label class="switch" onclick="event.stopPropagation()">
+      <input type="checkbox" id="mistaCheck" onchange="toggleMista()">
+      <span class="slider"></span>
+    </label>
+    <span class="mista-label">Estaca mista</span>
+    <span class="seg-badge" id="mistaCountBadge" style="display:none"></span>
+  </div>
+  <div id="mistaWrap" class="hidden">
+    <div style="margin-top:10px;font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.5">
+      Cada segmento define <b style="color:var(--text)">até qual profundidade</b> vai aquele tipo. O último vai até o embutimento.
+    </div>
+    <div id="mistaSegmentos"></div>
+    <button class="add-seg-btn" onclick="addSegmento()">＋ Adicionar segmento</button>
+  </div>
+  <div style="margin-top:12px;">
+    <label>Comprimento de embutimento (m)</label>
+    <input type="number" id="depth" value="20" min="1" max="100" step="0.5" oninput="drawProfile()">
+  </div>
+</div>
+
+<!-- BLOCO 2 – SONDAGEM SPT -->
+<div class="card">
+  <div class="card-title">Dados de sondagem SPT</div>
+  <div class="sounding-tabs" id="soundingTabs"></div>
+  <div class="quick-add">
+    <div>
+      <div class="seg-label">Prof. (m)</div>
+      <input type="number" id="qa-depth" placeholder="ex: 1.5" step="0.5" min="0"
+        onkeydown="if(event.key==='Enter'){document.getElementById('qa-nspt').focus()}">
+    </div>
+    <div>
+      <div class="seg-label">Solo</div>
+      <select id="qa-soil"></select>
+    </div>
+    <div>
+      <div class="seg-label">N</div>
+      <input type="number" id="qa-nspt" placeholder="N" min="0" max="100"
+        onkeydown="if(event.key==='Enter'){quickAdd()}">
+    </div>
+    <button class="quick-add-btn" onclick="quickAdd()">＋</button>
+  </div>
+  <div class="spt-header">
+    <span>Prof.(m)</span><span>Solo</span><span>N<sub>SPT</sub></span><span>α</span><span>β</span><span></span>
+  </div>
+  <div id="sptRows"></div>
+
+  <!-- Perfil + rLi -->
+  <div style="margin-top:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <div class="card-title" style="margin-bottom:0">Perfil estratigráfico &amp; rLi</div>
+      <div style="display:flex;gap:6px;">
+        <button class="action-btn" onclick="openFullscreen('profile')" title="Tela cheia"> Expandir</button>
+        <button class="action-btn danger" onclick="clearProfile()" title="Limpar sondagem"> Limpar</button>
+      </div>
+    </div>
+    <!-- Escala N para o perfil -->
+    <div class="scale-row">
+      <label>Escala N</label>
+      <input type="range" id="profileNScale" min="20" max="100" step="5" value="50"
+        oninput="document.getElementById('profileNScaleVal').textContent=this.value;drawProfile()">
+      <span class="scale-val" id="profileNScaleVal">50</span>
+    </div>
+    <div class="canvas-wrap" style="margin-top:8px;">
+      <canvas id="profileCanvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- BLOCO 3 – CARGA E FS -->
+<div class="card">
+  <div class="card-title">Verificação de carga</div>
+  <div class="row2" style="margin-bottom:10px;">
+    <div>
+      <label>Carga total do pilar (tf)</label>
+      <input type="number" id="loadTotal" value="300" step="5" min="0" oninput="recalc()">
+    </div>
+    <div>
+      <label>Fator de segurança</label>
+      <select id="fsType" onchange="toggleCustomFS();recalc()">
+        <option value="2" selected>FS = 2,00 (NBR 6122)</option>
+        <option value="1">FS = 1,00 (SEM)</option>
+        <option value="custom">Outro</option>
+      </select>
+    </div>
+  </div>
+  <div>
+    <label>Número de estacas do bloco</label>
+    <div class="pile-count-row">
+      <button class="pile-count-btn" onclick="changePileCount(-1)" title="Diminuir">−</button>
+      <input type="number" id="pileCount" value="5" min="1" step="1" oninput="recalc()">
+      <button class="pile-count-btn" onclick="changePileCount(1)" title="Aumentar">+</button>
+      <div class="pile-count-result">
+        Carga por estaca: <b id="loadPerPileVal">—</b> tf
+      </div>
+    </div>
+  </div>
+  <div id="customFSWrap" class="hidden">
+    <label>Valor do FS personalizado</label>
+    <input type="number" id="customFS" value="2.5" step="0.1" min="0.5" oninput="recalc()">
+  </div>
+</div>
+
+<div class="auto-calc-note">Os resultados abaixo são recalculados automaticamente a cada alteração.</div>
+
+<!-- BLOCO 4 – RESULTADOS -->
+<div id="results" class="hidden">
+  <div class="result-hero">
+    <div class="result-hero-label">Carga de ruptura (V<sub>rup</sub>)</div>
+    <div><span class="result-hero-val" id="heroVal">—</span><span class="result-hero-unit"> tf</span></div>
+    <div class="result-hero-sub" id="heroSub">—</div>
+  </div>
+  <div class="result-split">
+    <div class="split-card">
+      <div class="split-card-label">Resist. ponta (R<sub>P</sub>)</div>
+      <div><span class="split-card-val" id="rpVal">—</span> <span class="split-card-unit">tf</span></div>
+    </div>
+    <div class="split-card">
+      <div class="split-card-label">Resist. lateral (R<sub>L</sub>)</div>
+      <div><span class="split-card-val" id="rlVal">—</span> <span class="split-card-unit">tf</span></div>
+    </div>
+  </div>
+
+  <!-- Condições consideradas -->
+  <div class="card" style="margin-bottom:12px;">
+    <div class="card-title">Condições consideradas (método Décourt)</div>
+    <div id="conditionsBox"></div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="card" style="margin-bottom:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+      <div class="card-title" style="margin-bottom:0">Memória de cálculo - ← arraste →</div>
+      <div style="display:flex;gap:6px;">
+        <button class="action-btn" onclick="exportTableExcel()" title="Exportar para Excel"> Exportar Excel</button>
+        <button class="action-btn" onclick="openFullscreen('table')" title="Tela cheia"> Expandir</button>
+      </div>
+    </div>
+    <div class="table-scroll-wrap">
+      <table class="result-table">
+        <thead><tr>
+          <th>Prof.(m)</th><th>Cota(m)</th><th>NSPT</th><th>α</th><th>β</th>
+          <th>Ncor</th><th>rLi(tf/m²)</th><th>ΔRLi(tf)</th><th>RL(tf)</th>
+          <th>Np</th><th>Kp(tf/m²)</th><th>rP(tf/m²)</th><th>RP(tf)</th>
+          <th>Vrup(tf)</th><th>Vadm(tf)</th>
+        </tr></thead>
+        <tbody id="calcTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Gráfico curvas -->
+  <div class="card" style="margin-bottom:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div class="card-title" style="margin-bottom:0">Curvas de carga × profundidade</div>
+      <button class="action-btn" onclick="openFullscreen('chart')" title="Tela cheia"> Expandir</button>
+    </div>
+    <!-- Escala carga para o gráfico -->
+    <div class="scale-row" style="margin-bottom:8px;">
+      <label>Escala carga</label>
+      <input type="range" id="chartScale" min="50" max="500" step="25" value="200"
+        oninput="document.getElementById('chartScaleVal').textContent=this.value+' tf';if(lastCalcData)drawChart(...lastCalcData)">
+      <span class="scale-val" id="chartScaleVal">200 tf</span>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="chartCanvas"></canvas>
+    </div>
+    <div id="chartLegend" style="display:flex;gap:16px;margin-top:10px;font-size:11px;flex-wrap:wrap;color:rgba(200,220,210,.7)"></div>
+  </div>
+
+  <!-- FS -->
+  <div class="card" style="margin-bottom:8px;">
+    <div class="card-title">Verificação estrutural</div>
+    <div id="fsResult"></div>
+  </div>
+
+  <button class="clear-all-btn" onclick="clearAll()"> Limpar tudo</button>
+</div>
+</main>
+
+<!-- FOOTER -->
+<footer class="app-footer">
+  <div class="footer-content">
+    <!-- <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTRdL7xoIFyuPG0m-ho76xty9ivkxOpPo-vZw&s" alt="Logo" class="footer-img" onerror="this.style.display='none'"> -->
+    <div class="footer-text">
+      <!-- EDITAR AQUI: texto do rodapé -->
+      <p><b>Calculadora de método Décourt</b></p>
+      <p>Disciplina de Fundações — POLI-UPE 2026.1</p>
+      <p style="opacity:.6;font-size:10px;margin-top:6px;">
+        Os valores de capacidade de carga das estacas (Walter Lopes, T&amp;A, Gerdau) são referenciais,
+        extraídos de catálogos comerciais. Verificar sempre com o fabricante e/ou engenheiro responsável.
+      </p>
+    </div>
+  </div>
+</footer>
+
+<!-- FULLSCREEN OVERLAY -->
+<div class="fullscreen-overlay" id="fullscreenOverlay">
+  <div class="fs-header">
+    <span class="fs-title" id="fsTitle">Perfil</span>
+    <button class="fs-close" onclick="closeFullscreen()">✕ Fechar</button>
+  </div>
+  <div class="fs-controls" id="fsControls"></div>
+  <div class="fs-canvas-area" id="fsCanvasArea"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// TABELAS
+// ═══════════════════════════════════════
+const AB_TABLE={
+  'argila':{'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00}},
+  'silte':  {'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00}},
+  'areia':  {'pre-moldada':{a:1.00,b:1.00},'pre-moldada-ta':{a:1.00,b:1.00},'escavada-cl':{a:1.00,b:1.00},'personalizado':{a:1.00,b:1.00}},
+};
+const SOILS=[
+  {id:'areia-fina',  label:'Areia fina',    group:'areia', color:'#4a3a24',hatch:'dots'},
+  {id:'areia-media', label:'Areia média',   group:'areia', color:'#5a4428',hatch:'dots-lg'},
+  {id:'areia-grossa',label:'Areia grossa',  group:'areia', color:'#6a4e2a',hatch:'dots-xl'},
+  {id:'argila',      label:'Argila',        group:'argila',color:'#3a2e1e',hatch:'horiz'},
+  {id:'silte',       label:'Silte',         group:'silte', color:'#3e3424',hatch:'diag'},
+  {id:'argila-areia',label:'Argila arenosa',group:'argila',color:'#3c2e22',hatch:'cross'},
+  {id:'areia-arg',   label:'Areia argilosa',group:'areia', color:'#4c3a24',hatch:'dots-diag'},
+];
+const KP_TABLE={'argila':12,'silte':20,'silte-a':25,'areia':40};
+
+// ═══════════════════════════════════════
+// CONDIÇÕES CONSIDERADAS POR TIPO DE ESTACA (ptype)
+// Usado para exibir ao usuário, na seção "Condições consideradas", quais
+// hipóteses/coeficientes o método Décourt-Quaresma está aplicando para
+// cada tipo de estaca. Os valores de α e β efetivos vêm de AB_TABLE
+// (por tipo de solo); aqui documentamos o racional/texto explicativo.
+//
+// PARA ADICIONAR HÉLICE CONTÍNUA NO FUTURO:
+//  1. Adicionar uma entrada 'helice-continua' neste objeto PTYPE_INFO,
+//     com os textos explicativos (alfa/beta, área de ponta considerada etc).
+//  2. Adicionar a linha correspondente em AB_TABLE (para 'argila','silte','areia')
+//     com os coeficientes α e β da hélice contínua.
+//  3. Adicionar as estacas de hélice contínua no array PILES com
+//     cat:'helice-continua', ptype:'helice-continua'.
+//  4. Adicionar um botão de aba em #catTabs: 
+//     <button class="tab-btn" onclick="filterCat(this,'helice-continua')">Hélice Contínua</button>
+// ═══════════════════════════════════════
+const PTYPE_INFO={
+  'pre-moldada':{
+    label:'Pré-moldada cravada (Walter Lopes)',
+    text:'Estaca cravada por percussão/prensagem. Adota-se α=β=1,00 (estaca padrão de referência do método Décourt). Área de ponta = área líquida de concreto da seção vazada (hexagonal ou quadrada).'
+  },
+  'pre-moldada-ta':{
+    label:'Pré-moldada cravada (T&A)',
+    text:'Estaca cravada (hexagonal ou circular vazada). Adota-se α=β=1,00, mesmo racional da pré-moldada de referência. Área de ponta considerada como a área externa total da seção (efeito de "tampão de solo" / soil plug formado durante a cravação, que faz a ponta se comportar como seção cheia).'
+  },
+  'escavada-cl':{
+    label:'Perfil metálico cravado (Gerdau HP)',
+    text:'Perfil H cravado por percussão. Adota-se α=β=1,00 (mesmo racional de estaca cravada). Área de ponta considerada como a área do retângulo envoltório (b×d) do perfil — por atrito do solo durante a cravação, a ponta tende a se comportar como uma seção retangular cheia, não como a área de aço real.'
+  },
+  'personalizado':{
+    label:'Estaca personalizada',
+    text:'Dimensões inseridas manualmente pelo usuário. Adota-se, por padrão, α=β=1,00 (coeficientes de estaca cravada). Revise esses coeficientes em AB_TABLE caso o tipo de execução real seja diferente (ex.: estaca escavada, hélice contínua etc.).'
+  },
+  // GANCHO PARA HÉLICE CONTÍNUA (adicionar aqui no futuro):
+  // 'helice-continua':{
+  //   label:'Hélice contínua',
+  //   text:'Estaca executada por perfuração com hélice contínua e injeção de concreto. Coeficientes α e β específicos (tipicamente menores que 1,00, conforme literatura). Área de ponta = área da seção circular cheia (diâmetro nominal da hélice).'
+  // },
+};
+const PILES=[
+// Hexagonais Protendidas Vazadas - Walter Lopes
+  {id:'WL40cm-pt',cat:'pre-moldada',name:'WL Hex. 40cm (Protendida)',company:'Walter Lopes',d:.40,perimeter:1.20,area:.1040,ptype:'pre-moldada',desc:'Hex. protendida vazada, 40cm',vElem:123.80},
+  {id:'WL45cm-pt',cat:'pre-moldada',name:'WL Hex. 45cm (Protendida)',company:'Walter Lopes',d:.45,perimeter:1.35,area:.1316,ptype:'pre-moldada',desc:'Hex. protendida vazada, 45cm',vElem:146.30},
+  {id:'WL50cm-pt',cat:'pre-moldada',name:'WL Hex. 50cm (Protendida)',company:'Walter Lopes',d:.50,perimeter:1.50,area:.1625,ptype:'pre-moldada',desc:'Hex. protendida vazada, 50cm',vElem:167.10},
+  {id:'WL60cm-pt',cat:'pre-moldada',name:'WL Hex. 60cm (Protendida)',company:'Walter Lopes',d:.60,perimeter:1.80,area:.2339,ptype:'pre-moldada',desc:'Hex. protendida vazada, 60cm',vElem:243.90},
+
+  // Hexagonais Armadas Vazadas - Walter Lopes
+  {id:'WL40cm-arm',cat:'pre-moldada',name:'WL Hex. 40cm (Armada)',company:'Walter Lopes',d:.40,perimeter:1.20,area:.1040,ptype:'pre-moldada',desc:'Hex. armada vazada, 40cm',vElem:152.70},
+  {id:'WL45cm-arm',cat:'pre-moldada',name:'WL Hex. 45cm (Armada)',company:'Walter Lopes',d:.45,perimeter:1.35,area:.1316,ptype:'pre-moldada',desc:'Hex. armada vazada, 45cm',vElem:179.70},
+  {id:'WL50cm-arm',cat:'pre-moldada',name:'WL Hex. 50cm (Armada)',company:'Walter Lopes',d:.50,perimeter:1.50,area:.1625,ptype:'pre-moldada',desc:'Hex. armada vazada, 50cm',vElem:205.50},
+  {id:'WL60cm-arm',cat:'pre-moldada',name:'WL Hex. 60cm (Armada)',company:'Walter Lopes',d:.60,perimeter:1.80,area:.2339,ptype:'pre-moldada',desc:'Hex. armada vazada, 60cm',vElem:295.60},
+
+// Quadradas - Walter Lopes
+  {id:'WL17x17',cat:'pre-moldada',name:'WL 17x17cm',company:'Walter Lopes',d:.17,perimeter:.68,area:.0289,ptype:'pre-moldada',desc:'Quad. 17x17cm',vElem:37.00},
+  {id:'WL20x20',cat:'pre-moldada',name:'WL 20x20cm',company:'Walter Lopes',d:.20,perimeter:.80,area:.0400,ptype:'pre-moldada',desc:'Quad. 20x20cm',vElem:53.00},
+  {id:'WL23x23',cat:'pre-moldada',name:'WL 23x23cm',company:'Walter Lopes',d:.23,perimeter:.92,area:.0529,ptype:'pre-moldada',desc:'Quad. 23x23cm',vElem:73.50},
+  {id:'WL26x26',cat:'pre-moldada',name:'WL 26x26cm',company:'Walter Lopes',d:.26,perimeter:1.04,area:.0676,ptype:'pre-moldada',desc:'Quad. 26x26cm',vElem:94.70},
+  {id:'WL29x29',cat:'pre-moldada',name:'WL 29x29cm',company:'Walter Lopes',d:.29,perimeter:1.16,area:.0841,ptype:'pre-moldada',desc:'Quad. 29x29cm',vElem:118.10},
+
+//TA Pré moldadas HEXAGONAL
+  {id:'EPH-200',cat:'pre-moldada-ta',name:'EPH-200',company:'T&A',d:.173,perimeter:.60,area:.0260,ptype:'pre-moldada-ta',desc:'Hex. vazada, E=173mm',vElem:41.00},
+  {id:'EPH-280',cat:'pre-moldada-ta',name:'EPH-280',company:'T&A',d:.242,perimeter:.84,area:.0509,ptype:'pre-moldada-ta',desc:'Hex. vazada, E=242mm',vElem:69.00},
+  {id:'EPH-320',cat:'pre-moldada-ta',name:'EPH-320',company:'T&A',d:.277,perimeter:.96,area:.0665,ptype:'pre-moldada-ta',desc:'Hex. vazada, E=277mm',vElem:96.00},
+
+  //TA Pré moldadas CIRCULAR
+  {id:'EC350',   cat:'pre-moldada-ta',name:'EC 350',    company:'T&A',d:.35,perimeter:1.100,area:.0962,ptype:'pre-moldada-ta',desc:'Circular vazada Ø35cm, e=7cm (plug)',vElem:null},
+  {id:'EC400-8', cat:'pre-moldada-ta',name:'EC 400/8',  company:'T&A',d:.40,perimeter:1.257,area:.1257,ptype:'pre-moldada-ta',desc:'Circular vazada Ø40cm, e=8cm (plug)',vElem:null},
+  {id:'EC400-10',cat:'pre-moldada-ta',name:'EC 400/10', company:'T&A',d:.40,perimeter:1.257,area:.1257,ptype:'pre-moldada-ta',desc:'Circular vazada Ø40cm, e=10cm (plug)',vElem:null},
+  {id:'EC500',   cat:'pre-moldada-ta',name:'EC 500',    company:'T&A',d:.50,perimeter:1.571,area:.1963,ptype:'pre-moldada-ta',desc:'Circular vazada Ø50cm, e=9cm (plug)',vElem:null},
+  {id:'EC600',   cat:'pre-moldada-ta',name:'EC 600',    company:'T&A',d:.60,perimeter:1.885,area:.2827,ptype:'pre-moldada-ta',desc:'Circular vazada Ø60cm, e=10cm (plug)',vElem:null},
+  {id:'EC700',   cat:'pre-moldada-ta',name:'EC 700',    company:'T&A',d:.70,perimeter:2.199,area:.3848,ptype:'pre-moldada-ta',desc:'Circular vazada Ø70cm, e=11cm (plug)',vElem:null},
+
+// Gerdau - Perfis metálicos HP (cravação). b×d = retângulo envoltório (área de ponta efetiva
+// considerando que, por atrito do solo durante a cravação, a seção de ponta tende a se
+// comportar como o retângulo circunscrito ao perfil, não a área líquida de aço).
+// Dimensões aproximadas de catálogo (mm): HP200x53 (204x207), HP250x62 (246x256),
+// HP310x125 (312x312), HP360x152 (361x378). VERIFICAR com a tabela oficial Gerdau antes de uso definitivo.
+  {id:'HP200x53', cat:'escavada-cl',name:'HP 200x53,0',company:'Gerdau',d:.204,perimeter:2*(.204+.207),area:.204*.207,ptype:'escavada-cl',desc:'Perfil H cravado, 204x207mm, 53,0kg/m',vElem:null},
+  {id:'HP250x62', cat:'escavada-cl',name:'HP 250x62,0',company:'Gerdau',d:.246,perimeter:2*(.246+.256),area:.246*.256,ptype:'escavada-cl',desc:'Perfil H cravado, 246x256mm, 62,0kg/m',vElem:null},
+  {id:'HP310x125',cat:'escavada-cl',name:'HP 310x125,0',company:'Gerdau',d:.312,perimeter:2*(.312+.312),area:.312*.312,ptype:'escavada-cl',desc:'Perfil H cravado, 312x312mm, 125,0kg/m',vElem:null},
+  {id:'HP360x152',cat:'escavada-cl',name:'HP 360x152,0',company:'Gerdau',d:.361,perimeter:2*(.361+.378),area:.361*.378,ptype:'escavada-cl',desc:'Perfil H cravado, 361x378mm, 152,0kg/m',vElem:null},
+];
+
+// ═══════════════════════════════════════
+// ESTADO
+// ═══════════════════════════════════════
+// PILES[3] = WL60cm-pt (Walter Lopes Hex. 60cm Protendida): para o perfil SPT padrão
+// (sondagem de exemplo carregada no init) com embutimento 20m, carga 60tf e FS=2,0,
+// é a menor estaca da lista que ATENDE (Vadm ≈ 67,5tf ≥ 60tf). As estacas menores
+// (WL40/45/50cm e as quadradas) não atendem para esse cenário padrão.
+let selectedPile=PILES[3];
+// ═══════════════════════════════════════
+// SONDAGENS (SP1, SP2, ...)
+// ═══════════════════════════════════════
+// Cada sondagem tem seu próprio conjunto de camadas (rows). O cálculo e a
+// exportação Excel sempre operam sobre a sondagem ATIVA (activeSoundingIdx).
+// sptRows é mantido como referência direta ao array .rows da sondagem ativa —
+// sempre que activeSoundingIdx mudar, syncSptRowsRef() deve ser chamado.
+let SOUNDINGS=[{id:Date.now(),name:'SP1',rows:[]}];
+let activeSoundingIdx=0;
+let sptRows=SOUNDINGS[0].rows;
+function syncSptRowsRef(){sptRows=SOUNDINGS[activeSoundingIdx].rows;}
+let activeCat='todos',mistaAtiva=false,segmentos=[];
+let qaLastSoil='silte';
+let lastCalcData=null; // para rederenhar o chart ao mudar escala
+let fsActive=null; // 'profile' | 'chart'
+let showProfileShapes=true; // toggle "Mostrar perfil" da seção da estaca — ativo por padrão
+
+// ═══════════════════════════════════════
+// ESTACAS PERSONALIZADAS
+// ═══════════════════════════════════════
+let CUSTOM_PILES=[];
+function loadCustomPiles(){
+  try{
+    const raw=localStorage.getItem('decourt-custom-piles');
+    if(raw)CUSTOM_PILES=JSON.parse(raw);
+  }catch(e){CUSTOM_PILES=[];}
+}
+function saveCustomPilesToStorage(){
+  try{localStorage.setItem('decourt-custom-piles',JSON.stringify(CUSTOM_PILES));}catch(e){}
+}
+function getAllPiles(){return [...PILES,...CUSTOM_PILES];}
+function toggleCustomPileForm(){
+  document.getElementById('customPileForm').classList.toggle('hidden');
+}
+function saveCustomPile(){
+  const name=document.getElementById('cp-name').value.trim();
+  const company=document.getElementById('cp-company').value.trim()||'Personalizado';
+  const dCm=parseFloat(document.getElementById('cp-d').value);
+  const perimCm=parseFloat(document.getElementById('cp-perimeter').value);
+  const areaCm2=parseFloat(document.getElementById('cp-area').value);
+  const velemVal=parseFloat(document.getElementById('cp-velem').value);
+  const desc=document.getElementById('cp-desc').value.trim()||'Estaca personalizada';
+
+  if(!name){alert('Informe um nome para a estaca.');return;}
+  if(!perimCm||perimCm<=0){alert('Informe o perímetro (cm), maior que zero.');return;}
+  if(!areaCm2||areaCm2<=0){alert('Informe a área de ponta (cm²), maior que zero.');return;}
+
+  const id='custom-'+Date.now();
+  CUSTOM_PILES.push({
+    id, cat:'personalizado', name, company,
+    d:(dCm||0)/100,            // cm -> m
+    perimeter:perimCm/100,     // cm -> m
+    area:areaCm2/10000,        // cm² -> m²
+    ptype:'personalizado',     // assume coeficientes de estaca cravada (α=β=1,00) por padrão
+    desc,
+    vElem:isNaN(velemVal)?null:velemVal,
+  });
+  saveCustomPilesToStorage();
+
+  // Limpa o formulário
+  ['cp-name','cp-company','cp-d','cp-perimeter','cp-area','cp-velem','cp-desc'].forEach(id=>{
+    document.getElementById(id).value='';
+  });
+  toggleCustomPileForm();
+
+  // Muda para a aba "Personalizado" e seleciona a nova estaca
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  const personalizadoBtn=[...document.querySelectorAll('.tab-btn')].find(b=>b.textContent.trim()==='Personalizado');
+  if(personalizadoBtn)personalizadoBtn.classList.add('active');
+  activeCat='personalizado';
+  selectedPile=CUSTOM_PILES[CUSTOM_PILES.length-1];
+  renderPiles();renderRows();drawProfile();
+}
+
+// ═══════════════════════════════════════
+// TEMA CLARO / ESCURO
+// ═══════════════════════════════════════
+function cssVar(name){
+  return getComputedStyle(document.body).getPropertyValue(name).trim();
+}
+// Retorna rgba() usando o triplet --canvas-ink (texto/grade do canvas), adaptado ao tema
+function ink(alpha,strong=false){
+  const rgb=cssVar(strong?'--canvas-ink-strong':'--canvas-ink')||'180,200,185';
+  return `rgba(${rgb},${alpha})`;
+}
+// Para hachuras: linhas de contorno, mais sutis no claro, mais fortes no escuro
+function hatchLine(alpha){
+  return document.body.classList.contains('light')?`rgba(0,0,0,${alpha*0.7})`:`rgba(255,255,255,${alpha})`;
+}
+// Ícones do toggle de tema (SVG, sem emoji)
+const ICON_MOON='<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+const ICON_SUN='<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>';
+function setThemeIcon(isLight){
+  document.getElementById('themeIcon').innerHTML=isLight?ICON_SUN:ICON_MOON;
+}
+function toggleTheme(){
+  const isLight=document.body.classList.toggle('light');
+  setThemeIcon(isLight);
+  try{localStorage.setItem('decourt-theme',isLight?'light':'dark');}catch(e){}
+  drawProfile();
+  if(lastCalcData)drawChart(...lastCalcData);
+}
+function applyStoredTheme(){
+  let saved=null;
+  try{saved=localStorage.getItem('decourt-theme');}catch(e){}
+  if(saved==='light'){
+    document.body.classList.add('light');
+    setThemeIcon(true);
+  }
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+(function init(){
+  applyStoredTheme();
+  loadCustomPiles();
+  const qasel=document.getElementById('qa-soil');
+  SOILS.forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.label;qasel.appendChild(o);});
+  qasel.value=qaLastSoil;
+  qasel.addEventListener('change',()=>{qaLastSoil=qasel.value;});
+  renderPiles();
+  renderSoundingTabs();
+  const SOND_C=[
+    [1,'silte',11],[2,'silte',5],[3,'areia-fina',3],[4,'areia-fina',2],[5,'areia-fina',2],
+    [6,'areia-fina',2],[7,'areia-fina',6],[8,'areia-fina',2],[9,'areia-fina',2],
+    [10,'argila',2],[11,'argila',2],[12,'argila',2],[13,'argila',2],[14,'argila',2],[15,'argila',2],
+    [16,'areia-media',4],[17,'areia-media',8],[17.5,'silte',13],[18,'silte',10],
+    [19,'silte',8],[20,'silte',8],[21,'silte',9],[22,'silte',9],[23,'silte',9],
+  ];
+  SOND_C.forEach(([d,s,n])=>addRow(d,s,n));
+  window.addEventListener('resize',()=>{
+    drawProfile();
+    if(lastCalcData)drawChart(...lastCalcData);
+  });
+  setTimeout(drawProfile,120);
+})();
+
+// ═══════════════════════════════════════
+// LIMPAR
+// ═══════════════════════════════════════
+function clearProfile(){
+  if(!confirm(`Limpar todos os dados da sondagem "${getActiveSounding().name}"?`)) return;
+  clearActiveSoundingData();
+}
+// Limpa os dados da sondagem ativa sem pedir confirmação (usado internamente por clearAll)
+function clearActiveSoundingData(){
+  sptRows.length=0; // limpa in-place, mantém referência com SOUNDINGS[i].rows
+  renderRows();
+  const ctx=document.getElementById('profileCanvas').getContext('2d');
+  ctx.clearRect(0,0,9999,9999);
+  // Resetar quick-add
+  document.getElementById('qa-depth').value='';
+  document.getElementById('qa-nspt').value='';
+}
+function getActiveSounding(){return SOUNDINGS[activeSoundingIdx];}
+function clearAll(){
+  if(!confirm('Limpar tudo e iniciar nova análise?')) return;
+  // Volta para apenas 1 sondagem (SP1), vazia
+  SOUNDINGS=[{id:Date.now(),name:'SP1',rows:[]}];
+  activeSoundingIdx=0;
+  syncSptRowsRef();
+  renderSoundingTabs();
+  clearActiveSoundingData();
+  document.getElementById('results').classList.add('hidden');
+  lastCalcData=null;
+  // Reset estaca mista
+  mistaAtiva=false;
+  segmentos=[];
+  document.getElementById('mistaCheck').checked=false;
+  document.getElementById('mistaToggleRow').classList.remove('on');
+  document.getElementById('mistaWrap').classList.add('hidden');
+  updateMistaBadge();
+  drawProfile();
+  // Rola para o topo
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ═══════════════════════════════════════
+// FULLSCREEN
+// ═══════════════════════════════════════
+function openFullscreen(type){
+  fsActive=type;
+  const ov=document.getElementById('fullscreenOverlay');
+  const area=document.getElementById('fsCanvasArea');
+  const controls=document.getElementById('fsControls');
+  ov.classList.add('open');
+  area.innerHTML='';
+
+  if(type==='profile'){
+    document.getElementById('fsTitle').textContent='Perfil estratigráfico & rLi';
+    // Controle de escala N
+    const curScale=document.getElementById('profileNScale').value;
+    controls.innerHTML=`
+      <label>Escala N máx.</label>
+      <input type="range" min="20" max="100" step="5" value="${curScale}"
+        class='fs-range' oninput="document.getElementById('profileNScale').value=this.value;
+                 document.getElementById('profileNScaleVal').textContent=this.value;
+                 this.parentElement.querySelector('.fs-scale-val').textContent=this.value;
+                 drawProfileFS()">
+      <span class="fs-scale-val">${curScale}</span>`;
+    const c=document.createElement('canvas');
+    c.id='profileCanvasFS';
+    area.appendChild(c);
+    setTimeout(drawProfileFS,50);
+  } else if(type==='table'){
+    document.getElementById('fsTitle').textContent='Memória de cálculo';
+    controls.innerHTML=`
+      <button class="action-btn" onclick="exportTableExcel()" style="margin:0"> Exportar Excel</button>`;
+    const wrap=document.createElement('div');
+    wrap.className='table-scroll-wrap';
+    wrap.style.cssText='width:100%;height:100%;overflow:auto;flex:1;';
+    const original=document.querySelector('#results table.result-table');
+    wrap.innerHTML=original.outerHTML;
+    area.appendChild(wrap);
+  } else {
+    document.getElementById('fsTitle').textContent='Curvas de carga × profundidade';
+    const curScale=document.getElementById('chartScale').value;
+    controls.innerHTML=`
+      <label>Escala carga máx. (tf)</label>
+      <input type="range" min="50" max="500" step="25" value="${curScale}"
+        class='fs-range' oninput="document.getElementById('chartScale').value=this.value;
+                 document.getElementById('chartScaleVal').textContent=this.value+' tf';
+                 this.parentElement.querySelector('.fs-scale-val').textContent=this.value+' tf';
+                 if(lastCalcData){drawChart(...lastCalcData);drawChartFS();}">
+      <span class="fs-scale-val">${curScale} tf</span>`;
+    const c=document.createElement('canvas');
+    c.id='chartCanvasFS';
+    area.appendChild(c);
+    setTimeout(drawChartFS,50);
+  }
+}
+function closeFullscreen(){
+  document.getElementById('fullscreenOverlay').classList.remove('open');
+  document.getElementById('fsCanvasArea').innerHTML='';
+  fsActive=null;
+}
+
+// ═══════════════════════════════════════
+// ESTACAS
+// ═══════════════════════════════════════
+function filterCat(btn,cat){
+  activeCat=cat;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');renderPiles();
+}
+function renderPiles(){
+  const list=document.getElementById('pileList');
+  const term=(document.getElementById('pileSearch')?.value||'').trim().toLowerCase();
+  let filtered=activeCat==='todos'?getAllPiles():getAllPiles().filter(p=>p.cat===activeCat);
+  if(term){
+    filtered=filtered.filter(p=>
+      p.name.toLowerCase().includes(term)||
+      p.company.toLowerCase().includes(term)||
+      p.desc.toLowerCase().includes(term)||
+      p.id.toLowerCase().includes(term));
+  }
+  list.innerHTML=filtered.map(p=>`
+    <div class="pile-card ${p.id===selectedPile.id?'selected':''}" onclick="selectPile('${p.id}')">
+      <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+        ${showProfileShapes?`<div class="pile-shape">${pileShapeSVG(p)}</div>`:''}
+        <div style="min-width:0;">
+          <div class="pile-card-name">${p.name}</div>
+          <div class="pile-card-sub">${p.company} · ${p.desc}</div>
+        </div>
+      </div>
+      <div class="pile-card-specs">∅${(p.d*100).toFixed(0)}cm<br>A=${p.area.toFixed(4)}m²</div>
+      ${p.cat==='personalizado'?`<button class="del-btn" style="margin-left:8px;flex-shrink:0" onclick="event.stopPropagation();removeCustomPile('${p.id}')" title="Excluir">×</button>`:''}
+    </div>`).join('');
+}
+function removeCustomPile(id){
+  if(!confirm('Excluir esta estaca personalizada?'))return;
+  CUSTOM_PILES=CUSTOM_PILES.filter(p=>p.id!==id);
+  saveCustomPilesToStorage();
+  if(selectedPile.id===id)selectedPile=PILES[3];
+  renderPiles();renderRows();drawProfile();
+}
+function selectPile(id){selectedPile=getAllPiles().find(p=>p.id===id);renderPiles();renderRows();drawProfile();}
+
+// ═══════════════════════════════════════
+// REPRESENTAÇÃO VISUAL DA SEÇÃO (toggle "Mostrar perfil")
+// ═══════════════════════════════════════
+function togglePileShapes(){
+  showProfileShapes=!showProfileShapes;
+  document.getElementById('shapeToggleBtn').classList.toggle('on',showProfileShapes);
+  renderPiles();
+}
+// Retorna um SVG pequeno representando a seção transversal da estaca
+function pileShapeSVG(p){
+  const S=34; // tamanho do viewBox
+  if(p.cat==='escavada-cl'){
+    // Perfil I/H — desenha esquema de mesas + alma
+    return `<svg viewBox="0 0 ${S} ${S}" width="34" height="34">
+      <rect x="4" y="4" width="${S-8}" height="${S-8}" fill="none" stroke="var(--accent)" stroke-width="1" opacity=".25"/>
+      <rect x="6" y="6" width="${S-12}" height="4" fill="var(--accent)"/>
+      <rect x="6" y="${S-10}" width="${S-12}" height="4" fill="var(--accent)"/>
+      <rect x="${S/2-2}" y="8" width="4" height="${S-16}" fill="var(--accent)"/>
+    </svg>`;
+  }
+  if(/Hex\./i.test(p.desc)){
+    // Hexágono regular
+    const cx=S/2,cy=S/2,r=S/2-3;
+    const pts=[0,1,2,3,4,5].map(i=>{
+      const ang=Math.PI/180*(60*i-30);
+      return `${(cx+r*Math.cos(ang)).toFixed(1)},${(cy+r*Math.sin(ang)).toFixed(1)}`;
+    }).join(' ');
+    return `<svg viewBox="0 0 ${S} ${S}" width="34" height="34">
+      <polygon points="${pts}" fill="rgba(46,204,113,.12)" stroke="var(--accent)" stroke-width="1.5"/>
+      <circle cx="${cx}" cy="${cy}" r="${r*0.45}" fill="none" stroke="var(--accent)" stroke-width="1" opacity=".4"/>
+    </svg>`;
+  }
+  if(/Quad\./i.test(p.desc)){
+    return `<svg viewBox="0 0 ${S} ${S}" width="34" height="34">
+      <rect x="4" y="4" width="${S-8}" height="${S-8}" fill="rgba(46,204,113,.12)" stroke="var(--accent)" stroke-width="1.5"/>
+    </svg>`;
+  }
+  // Circular (default)
+  const r=S/2-3;
+  return `<svg viewBox="0 0 ${S} ${S}" width="34" height="34">
+    <circle cx="${S/2}" cy="${S/2}" r="${r}" fill="rgba(46,204,113,.12)" stroke="var(--accent)" stroke-width="1.5"/>
+    <circle cx="${S/2}" cy="${S/2}" r="${r*0.5}" fill="none" stroke="var(--accent)" stroke-width="1" opacity=".4"/>
+  </svg>`;
+}
+
+// ═══════════════════════════════════════
+// ESTACA MISTA
+// ═══════════════════════════════════════
+function toggleMista(){
+  mistaAtiva=document.getElementById('mistaCheck').checked;
+  document.getElementById('mistaToggleRow').classList.toggle('on',mistaAtiva);
+  document.getElementById('mistaWrap').classList.toggle('hidden',!mistaAtiva);
+  if(mistaAtiva&&segmentos.length===0)addSegmento();
+  updateMistaBadge();renderRows();drawProfile();
+}
+function addSegmento(){segmentos.push({profFim:'',pileId:PILES[0].id});renderSegmentos();}
+function removeSegmento(i){segmentos.splice(i,1);renderSegmentos();updateMistaBadge();renderRows();drawProfile();}
+function renderSegmentos(){
+  document.getElementById('mistaSegmentos').innerHTML=segmentos.map((seg,i)=>`
+    <div class="seg-row">
+      <div><div class="seg-label">Até (m)</div>
+        <input type="number" placeholder="prof." value="${seg.profFim||''}" min="0" step="0.5"
+          oninput="segmentos[${i}].profFim=parseFloat(this.value)||'';updateMistaBadge();renderRows();drawProfile()">
+      </div>
+      <div><div class="seg-label">Tipo de estaca</div>
+        <select onchange="segmentos[${i}].pileId=this.value;renderRows();drawProfile()">
+          ${getAllPiles().map(p=>`<option value="${p.id}" ${p.id===seg.pileId?'selected':''}>${p.name}</option>`).join('')}
+        </select>
+      </div>
+      <button class="del-btn" onclick="removeSegmento(${i})">×</button>
+    </div>`).join('');
+  updateMistaBadge();
+}
+function updateMistaBadge(){
+  const b=document.getElementById('mistaCountBadge');
+  if(mistaAtiva&&segmentos.length>0){b.style.display='inline-block';b.textContent=segmentos.length+' segmento';}
+  else b.style.display='none';
+}
+function getPileForDepth(d){
+  if(!mistaAtiva||segmentos.length===0)return selectedPile;
+  const sorted=[...segmentos].filter(s=>s.profFim!=='').sort((a,b)=>a.profFim-b.profFim);
+  for(const seg of sorted)if(d<=seg.profFim)return getAllPiles().find(p=>p.id===seg.pileId)||selectedPile;
+  return selectedPile;
+}
+
+// ═══════════════════════════════════════
+// GERENCIAMENTO DE SONDAGENS (SP1, SP2, ...)
+// ═══════════════════════════════════════
+function renderSoundingTabs(){
+  const box=document.getElementById('soundingTabs');
+  box.innerHTML=SOUNDINGS.map((s,i)=>`
+    <div class="sounding-tab ${i===activeSoundingIdx?'active':''}" data-idx="${i}">
+      <span class="sounding-tab-name" ondblclick="event.stopPropagation();editSoundingName(${i})" onclick="selectSounding(${i})">${s.name}</span>
+      <button class="del-sounding" onclick="event.stopPropagation();removeSounding(${i})" title="Remover ${s.name}">×</button>
+    </div>`).join('')
+    +`<button class="sounding-tab-add" onclick="addSounding()" title="Adicionar nova sondagem">+</button>`;
+}
+function selectSounding(idx){
+  if(idx===activeSoundingIdx)return;
+  activeSoundingIdx=idx;
+  syncSptRowsRef();
+  renderSoundingTabs();
+  renderRows();
+  drawProfile();
+}
+function addSounding(){
+  // Gera um nome SPn que ainda não exista (evita duplicar nomes se o usuário renomeou)
+  let n=SOUNDINGS.length+1;
+  const names=new Set(SOUNDINGS.map(s=>s.name));
+  while(names.has('SP'+n))n++;
+  SOUNDINGS.push({id:Date.now()+Math.random(),name:'SP'+n,rows:[]});
+  activeSoundingIdx=SOUNDINGS.length-1;
+  syncSptRowsRef();
+  renderSoundingTabs();
+  renderRows();
+  drawProfile();
+}
+// Edição inline do nome da sondagem (duplo clique na aba)
+function editSoundingName(idx){
+  const box=document.getElementById('soundingTabs');
+  const tabEl=box.querySelector(`.sounding-tab[data-idx="${idx}"] .sounding-tab-name`);
+  if(!tabEl)return;
+  const current=SOUNDINGS[idx].name;
+  const input=document.createElement('input');
+  input.type='text';
+  input.value=current;
+  input.className='sounding-tab-name-input';
+  input.maxLength=20;
+  tabEl.replaceWith(input);
+  input.focus();
+  input.select();
+  const commit=()=>{
+    const val=input.value.trim();
+    SOUNDINGS[idx].name=val||current;
+    renderSoundingTabs();
+    recalc(); // atualiza qualquer texto que referencie o nome da sondagem (ex: condições)
+  };
+  input.addEventListener('blur',commit);
+  input.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){commit();}
+    else if(e.key==='Escape'){renderSoundingTabs();}
+  });
+}
+function removeSounding(idx){
+  const name=SOUNDINGS[idx].name;
+  if(SOUNDINGS.length<=1){
+    // Última sondagem: não remove, mas reseta (limpa dados e renomeia para SP1)
+    if(!confirm(`Limpar todos os dados da sondagem "${name}"?`))return;
+    SOUNDINGS[idx]={id:Date.now(),name:'SP1',rows:[]};
+    activeSoundingIdx=0;
+    syncSptRowsRef();
+    renderSoundingTabs();
+    renderRows();
+    drawProfile();
+    return;
+  }
+  if(!confirm(`Remover a sondagem "${name}"?`))return;
+  SOUNDINGS.splice(idx,1);
+  if(activeSoundingIdx>=SOUNDINGS.length)activeSoundingIdx=SOUNDINGS.length-1;
+  else if(activeSoundingIdx>idx)activeSoundingIdx--;
+  syncSptRowsRef();
+  renderSoundingTabs();
+  renderRows();
+  drawProfile();
+}
+
+// ═══════════════════════════════════════
+// TABELA SPT
+// ═══════════════════════════════════════
+function quickAdd(){
+  const d=parseFloat(document.getElementById('qa-depth').value);
+  const s=document.getElementById('qa-soil').value;
+  const n=parseFloat(document.getElementById('qa-nspt').value);
+  if(!d||isNaN(d)){document.getElementById('qa-depth').focus();return;}
+  addRow(d,s,isNaN(n)?0:n);
+  const nextD=Math.round((d+1)*2)/2;
+  document.getElementById('qa-depth').value=nextD;
+  document.getElementById('qa-nspt').value='';
+  document.getElementById('qa-nspt').focus();
+}
+function getAB(soilId,pileOverride){
+  const pile=pileOverride||selectedPile;
+  const soil=SOILS.find(s=>s.id===soilId);
+  const group=soil?.group||'areia';
+  const row=AB_TABLE[group]?.[pile.ptype];
+  return row?row:{a:1.00,b:1.00};
+}
+function soilOptions(sel){
+  return SOILS.map(s=>`<option value="${s.id}" ${s.id===sel?'selected':''}>${s.label}</option>`).join('');
+}
+function addRow(depth='',soil='silte',nspt=''){
+  const id=Date.now()+Math.random();
+  sptRows.push({id,depth,soil,nspt});renderRows();drawProfile();
+}
+function removeRow(id){
+  const idx=sptRows.findIndex(r=>r.id===id);
+  if(idx!==-1)sptRows.splice(idx,1);
+  renderRows();drawProfile();
+}
+function renderRows(){
+  document.getElementById('sptRows').innerHTML=sptRows.map((r,i)=>{
+    const pile=getPileForDepth(r.depth||(i+1));
+    const ab=getAB(r.soil,pile);
+    return `<div class="spt-row">
+      <input id="${r.id}-d" type="number" placeholder="${i+1}" value="${r.depth||''}" min="0" step="0.5"
+        oninput="syncRow(${r.id},'depth',this.value);drawProfile()">
+      <select id="${r.id}-s" onchange="syncRow(${r.id},'soil',this.value);renderRows();drawProfile()">
+        ${soilOptions(r.soil)}</select>
+      <input id="${r.id}-n" type="number" placeholder="N" value="${r.nspt||''}" min="0" max="100"
+        oninput="syncRow(${r.id},'nspt',this.value);recalc()">
+      <input type="text" value="${ab.a.toFixed(2)}" readonly style="color:var(--muted);font-size:12px;text-align:center">
+      <input type="text" value="${ab.b.toFixed(2)}" readonly style="color:var(--muted);font-size:12px;text-align:center">
+      <button class="del-btn" onclick="removeRow(${r.id})">×</button>
+    </div>`;
+  }).join('');
+}
+function syncRow(id,field,val){
+  const r=sptRows.find(r=>r.id===id);if(!r)return;
+  r[field]=(field==='nspt'||field==='depth')?parseFloat(val):val;
+}
+function getRowValues(){
+  return sptRows.map(r=>({
+    depth:parseFloat(document.getElementById(`${r.id}-d`)?.value)||0,
+    soil:document.getElementById(`${r.id}-s`)?.value||'silte',
+    nspt:parseFloat(document.getElementById(`${r.id}-n`)?.value)||0,
+  })).filter(r=>r.depth>0).sort((a,b)=>a.depth-b.depth);
+}
+function toggleCustomFS(){
+  document.getElementById('customFSWrap').classList.toggle('hidden',
+    document.getElementById('fsType').value!=='custom');
+}
+function getFS(){
+  const sel=document.getElementById('fsType').value;
+  return sel==='custom'?parseFloat(document.getElementById('customFS').value)||2:parseFloat(sel);
+}
+// Botões +/- do número de estacas do bloco (mínimo 1)
+function changePileCount(delta){
+  const input=document.getElementById('pileCount');
+  let v=(parseInt(input.value)||1)+delta;
+  if(v<1)v=1;
+  input.value=v;
+  recalc();
+}
+
+// ═══════════════════════════════════════
+// HACHURAS
+// ═══════════════════════════════════════
+function makeHatch(ctx,type,color){
+  const sz=12,oc=document.createElement('canvas');
+  oc.width=sz;oc.height=sz;
+  const c=oc.getContext('2d');
+  c.fillStyle=color;c.fillRect(0,0,sz,sz);
+  c.strokeStyle='rgba(255,255,255,.18)';c.lineWidth=1;
+  if(type==='horiz'){for(let y=3;y<sz;y+=4){c.beginPath();c.moveTo(0,y);c.lineTo(sz,y);c.stroke();}}
+  else if(type==='diag'){for(let x=-sz;x<sz*2;x+=5){c.beginPath();c.moveTo(x,0);c.lineTo(x+sz,sz);c.stroke();}}
+  else if(type==='cross'){
+    for(let y=3;y<sz;y+=4){c.beginPath();c.moveTo(0,y);c.lineTo(sz,y);c.stroke();}
+    for(let x=3;x<sz;x+=4){c.beginPath();c.moveTo(x,0);c.lineTo(x,sz);c.stroke();}
+  }
+  else if(type==='dots'){c.fillStyle='rgba(255,255,255,.30)';c.beginPath();c.arc(3,3,1.2,0,Math.PI*2);c.fill();c.beginPath();c.arc(9,9,1.2,0,Math.PI*2);c.fill();}
+  else if(type==='dots-lg'){c.fillStyle='rgba(255,255,255,.35)';c.beginPath();c.arc(3,3,1.6,0,Math.PI*2);c.fill();c.beginPath();c.arc(9,9,1.6,0,Math.PI*2);c.fill();}
+  else if(type==='dots-xl'){c.fillStyle='rgba(255,255,255,.40)';c.beginPath();c.arc(3,3,2.2,0,Math.PI*2);c.fill();c.beginPath();c.arc(9,9,2.2,0,Math.PI*2);c.fill();}
+  else if(type==='dots-diag'){
+    c.fillStyle='rgba(255,255,255,.28)';c.beginPath();c.arc(2,6,1.2,0,Math.PI*2);c.fill();c.beginPath();c.arc(8,2,1.2,0,Math.PI*2);c.fill();
+    c.strokeStyle='rgba(255,255,255,.12)';
+    for(let x=-sz;x<sz*2;x+=6){c.beginPath();c.moveTo(x,0);c.lineTo(x+sz,sz);c.stroke();}
+  }
+  return ctx.createPattern(oc,'repeat');
+}
+
+// ═══════════════════════════════════════
+// PERFIL — função central
+// ═══════════════════════════════════════
+function drawProfileOnCanvas(canvas){
+  const rows=getRowValues();
+  const emb=parseFloat(document.getElementById('depth').value)||12;
+  const maxD=Math.max(...(rows.length?rows.map(r=>r.depth):[0]),emb,1)+1;
+  const maxNScale=parseInt(document.getElementById('profileNScale').value)||50;
+
+  const W=canvas.parentElement?.clientWidth||canvas.offsetWidth||220;
+  const H=Math.max(320,Math.min(900,maxD*16));
+  canvas.width=W*devicePixelRatio;canvas.height=H*devicePixelRatio;
+  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(devicePixelRatio,devicePixelRatio);
+  ctx.clearRect(0,0,W,H);
+
+  const PAD_L=44,PAD_T=30,PAD_B=20;
+  const profW=56,profX=PAD_L;
+  const chartH=H-PAD_T-PAD_B;
+  const scale=chartH/maxD;
+  const GAP=6,rliX=profX+profW+GAP,rliW=W-rliX-4;
+
+  const rliVals=rows.map(r=>{const Nc=Math.max(r.nspt,3);return Nc/3+1;});
+  const maxRli=maxNScale/3+1; // usa escala controlada pelo slider
+
+  ctx.fillStyle=cssVar('--canvas-bg');ctx.fillRect(0,0,W,H);
+
+  // Grade + labels
+  const dStep=maxD<=15?2:maxD<=30?5:10;
+  ctx.font='10px monospace';ctx.textAlign='right';
+  for(let d=0;d<=maxD;d+=dStep){
+    const y=PAD_T+d*scale;
+    ctx.fillStyle=ink(.5);ctx.fillText(d+'m',PAD_L-4,y+3);
+    ctx.strokeStyle=ink(.07);ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(PAD_L,y);ctx.lineTo(W-4,y);ctx.stroke();
+  }
+  // Superfície
+  ctx.strokeStyle=ink(.7);ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.moveTo(PAD_L-10,PAD_T);ctx.lineTo(profX+profW+4,PAD_T);ctx.stroke();
+  ctx.strokeStyle=ink(.4);ctx.lineWidth=1;
+  for(let x=PAD_L-8;x<profX+profW+4;x+=6){ctx.beginPath();ctx.moveTo(x,PAD_T);ctx.lineTo(x-5,PAD_T-6);ctx.stroke();}
+  ctx.fillStyle=ink(.6);ctx.font='bold 8px monospace';ctx.textAlign='left';
+  ctx.fillText('Sup.',profX+profW+6,PAD_T-4);
+  ctx.fillStyle='rgba(93,173,226,.7)';ctx.font='bold 8px monospace';ctx.textAlign='center';
+  ctx.fillText('rLi (tf/m²)',rliX+rliW/2,PAD_T-10);
+
+  // Camadas
+  if(rows.length>0){
+    let prevD=0,prevSoilId=null;
+    rows.forEach((r,ri)=>{
+      const soil=SOILS.find(s=>s.id===r.soil)||SOILS[0];
+      const soilMudou=r.soil!==prevSoilId;
+      const y0=PAD_T+prevD*scale,y1=PAD_T+r.depth*scale,lh=y1-y0;
+      if(lh<=0){prevD=r.depth;prevSoilId=r.soil;return;}
+      ctx.fillStyle=makeHatch(ctx,soil.hatch,soil.color);ctx.fillRect(profX,y0,profW,lh);
+      ctx.strokeStyle=ink(.15);ctx.lineWidth=.8;
+      ctx.beginPath();ctx.moveTo(profX,y1);ctx.lineTo(profX+profW,y1);ctx.stroke();
+      const midY=y0+lh/2;
+      ctx.textAlign='left';
+      if(soilMudou){
+        ctx.fillStyle=ink(.92,true);ctx.font='500 9px sans-serif';
+        if(lh>=16)ctx.fillText(soil.label,profX+2,lh>=26?midY-5:midY+3);
+        if(lh>=26){ctx.fillStyle=ink(.55);ctx.font='8px monospace';ctx.fillText(`N=${r.nspt} z=${r.depth}m`,profX+2,midY+7);}
+      } else if(lh>=14){ctx.fillStyle=ink(.55);ctx.font='8px monospace';ctx.fillText(`N=${r.nspt}`,profX+2,midY+3);}
+      prevD=r.depth;prevSoilId=r.soil;
+    });
+    const totalD=rows[rows.length-1].depth;
+    ctx.strokeStyle=ink(.2);ctx.lineWidth=1.2;ctx.strokeRect(profX,PAD_T,profW,totalD*scale);
+    // Linha separadora rLi
+    ctx.strokeStyle='rgba(93,173,226,.15)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(rliX,PAD_T);ctx.lineTo(rliX,PAD_T+totalD*scale);ctx.stroke();
+    // Escala X rLi
+    ctx.fillStyle='rgba(93,173,226,.5)';ctx.font='8px monospace';ctx.textAlign='center';
+    const rliTick=niceStep(maxRli,3);
+    for(let v=0;v<=maxRli;v+=rliTick){
+      const xT=rliX+v/maxRli*rliW;
+      ctx.fillText(v.toFixed(0),xT,PAD_T-2);
+      ctx.strokeStyle='rgba(93,173,226,.1)';ctx.lineWidth=.5;
+      ctx.beginPath();ctx.moveTo(xT,PAD_T);ctx.lineTo(xT,PAD_T+totalD*scale);ctx.stroke();
+    }
+    // Linha rLi
+    const pts=[];let pPrevD=0;
+    rows.forEach((r,ri)=>{
+      const midD=(pPrevD+r.depth)/2;
+      const rLi=Math.min(rliVals[ri],maxRli); // clamp à escala
+      pts.push({x:rliX+rLi/maxRli*rliW,y:PAD_T+midD*scale});
+      pPrevD=r.depth;
+    });
+    if(pts.length>0){
+      ctx.beginPath();ctx.moveTo(rliX,pts[0].y);pts.forEach(p=>ctx.lineTo(p.x,p.y));ctx.lineTo(rliX,pts[pts.length-1].y);ctx.closePath();
+      ctx.fillStyle='rgba(93,173,226,.08)';ctx.fill();
+      ctx.beginPath();pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+      ctx.strokeStyle='rgba(93,173,226,.75)';ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.stroke();
+      pts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,2.5,0,Math.PI*2);ctx.fillStyle='rgba(93,173,226,.85)';ctx.fill();});
+    }
+  }
+
+  // Estaca
+  const pileW=12,pileX2=profX+(profW-pileW)/2;
+  const pileY0=PAD_T,pileY1=PAD_T+emb*scale;
+  const SEG_COLORS=['#2ecc71','#f39c12','#5dade2','#e74c3c','#9b59b6','#1abc9c'];
+  if(mistaAtiva&&segmentos.length>0){
+    const sorted=[...segmentos].filter(s=>s.profFim!=='').sort((a,b)=>a.profFim-b.profFim);
+    let prevY=pileY0;
+    sorted.forEach((seg,si)=>{
+      const segY=PAD_T+Math.min(Number(seg.profFim),emb)*scale;
+      if(segY<=prevY)return;
+      ctx.globalAlpha=.88;ctx.fillStyle=SEG_COLORS[si%SEG_COLORS.length];
+      ctx.fillRect(pileX2,prevY,pileW,segY-prevY);ctx.globalAlpha=1;
+      ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(pileX2,segY);ctx.lineTo(pileX2+pileW,segY);ctx.stroke();
+      if(segY-prevY>=16){
+        ctx.save();ctx.translate(pileX2-3,(prevY+segY)/2);ctx.rotate(-Math.PI/2);
+        ctx.font='bold 7px monospace';ctx.fillStyle=SEG_COLORS[si%SEG_COLORS.length];ctx.textAlign='center';
+        const pile=getAllPiles().find(p=>p.id===seg.pileId)||PILES[0];
+        ctx.fillText(pile.name.substring(0,8),0,0);ctx.restore();
+      }
+      prevY=segY;
+    });
+    if(prevY<pileY1){
+      ctx.globalAlpha=.88;ctx.fillStyle=SEG_COLORS[sorted.length%SEG_COLORS.length];
+      ctx.fillRect(pileX2,prevY,pileW,pileY1-prevY);ctx.globalAlpha=1;
+    }
+  } else {
+    ctx.globalAlpha=.92;ctx.fillStyle='#2ecc71';
+    ctx.fillRect(pileX2,pileY0,pileW,pileY1-pileY0);ctx.globalAlpha=1;
+  }
+  ctx.fillStyle='#1a9e53';
+  ctx.beginPath();ctx.moveTo(pileX2,pileY1);ctx.lineTo(pileX2+pileW/2,pileY1+10);ctx.lineTo(pileX2+pileW,pileY1);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.25)';ctx.lineWidth=.8;ctx.strokeRect(pileX2,pileY0,pileW,pileY1-pileY0);
+  ctx.fillStyle='#2ecc71';ctx.font='bold 9px monospace';ctx.textAlign='left';
+  ctx.fillText(`L=${emb}m`,pileX2+pileW+2,pileY1+4);
+}
+
+function drawProfile(){
+  drawProfileOnCanvas(document.getElementById('profileCanvas'));
+  if(fsActive==='profile'){const c=document.getElementById('profileCanvasFS');if(c)drawProfileFS();}
+  recalc();
+}
+function drawProfileFS(){
+  const c=document.getElementById('profileCanvasFS');
+  if(!c)return;
+  // Usa tamanho do container fullscreen
+  const area=document.getElementById('fsCanvasArea');
+  c.style.width=area.clientWidth+'px';
+  c.style.height=(area.clientHeight)+'px';
+  drawProfileOnCanvas(c);
+}
+
+// ═══════════════════════════════════════
+// CÁLCULO
+// ═══════════════════════════════════════
+function calculate(){
+  const rows=getRowValues();
+  if(rows.length===0)return false;
+  const depth=parseFloat(document.getElementById('depth').value)||12;
+  const fs=getFS();
+  const active=rows.filter(r=>r.depth<=depth);
+  if(active.length===0)return false;
+
+  let RL=0,prevD=0;
+  const layerDetails=[];
+  active.forEach((r,i)=>{
+    const pile=getPileForDepth(r.depth);
+    const soil=SOILS.find(s=>s.id===r.soil)||SOILS[0];
+    const ab=getAB(r.soil,pile);
+    const Ncor=Math.max(r.nspt,3);
+    const rLi=Ncor/3+1;
+    const thickness=r.depth-prevD;
+    const DRLi=rLi*ab.a*ab.b*pile.perimeter*thickness;
+    RL+=DRLi;
+    const slice=active.slice(0,i+1).slice(-3).map(rr=>Math.min(rr.nspt,50));
+    const NpI=slice.reduce((a,b)=>a+b,0)/slice.length;
+    const soilI=SOILS.find(s=>s.id===active[i].soil)||SOILS[0];
+    const KpI=KP_TABLE[soilI.group]??40;
+    const pileI=getPileForDepth(r.depth);
+    const RPI=NpI*KpI*pileI.area;
+    layerDetails.push({depth:r.depth,prevD,thickness,soilLabel:soil.label,
+      nspt:r.nspt,Ncor,rLi,alfa:ab.a,beta:ab.b,DRLi,RL_accum:RL,NpI,KpI,RPI,VrupI:RL+RPI,pile});
+    prevD=r.depth;
+  });
+
+  const lastSoil=SOILS.find(s=>s.id===active[active.length-1].soil)||SOILS[0];
+  const Kp=KP_TABLE[lastSoil.group]??40;
+  const last3=active.slice(-3).map(r=>Math.min(r.nspt,50));
+  const Np=last3.reduce((a,b)=>a+b,0)/last3.length;
+  const pileFinal=getPileForDepth(depth);
+  const rP=Np*Kp;
+  const RP=rP*pileFinal.area;
+  const Vrup=RL+RP;
+  const VadmTerreno=Vrup/fs;
+  // Carga admissível do elemento estrutural (Velem). Quando a estaca não tem esse
+  // dado de catálogo (vElem=null), não há limite estrutural a considerar.
+  const Velem=pileFinal.vElem;
+  const Vadm=(Velem!=null)?Math.min(VadmTerreno,Velem):VadmTerreno;
+  const limitante=(Velem!=null&&Velem<VadmTerreno)?'elem':'terreno';
+  const loadTotal=parseFloat(document.getElementById('loadTotal').value)||0;
+  const pileCount=Math.max(1,parseInt(document.getElementById('pileCount').value)||1);
+  const load=loadTotal/pileCount; // carga por estaca
+  document.getElementById('loadPerPileVal').textContent=load.toFixed(2);
+  const fsReal=Vrup/(load||1);
+
+  document.getElementById('heroVal').textContent=Vrup.toFixed(2);
+  document.getElementById('heroSub').textContent=`Vadm = ${Vadm.toFixed(2)} tf  ·  Np = ${Np.toFixed(1)}  ·  Kp = ${Kp} tf/m²  ·  rP = ${rP.toFixed(1)} tf/m²`;
+  document.getElementById('rpVal').textContent=RP.toFixed(2);
+  document.getElementById('rlVal').textContent=RL.toFixed(2);
+
+  document.getElementById('calcTableBody').innerHTML=layerDetails.map(l=>`<tr>
+    <td>${l.prevD.toFixed(1)}–${l.depth.toFixed(1)}</td><td>${(-l.depth).toFixed(2)}</td>
+    <td>${l.nspt}</td><td>${l.alfa.toFixed(2)}</td><td>${l.beta.toFixed(2)}</td>
+    <td>${l.Ncor}</td><td>${l.rLi.toFixed(2)}</td><td>${l.DRLi.toFixed(2)}</td>
+    <td>${l.RL_accum.toFixed(2)}</td><td>${l.NpI.toFixed(1)}</td><td>${l.KpI}</td>
+    <td>${(l.NpI*l.KpI).toFixed(2)}</td><td>${l.RPI.toFixed(2)}</td>
+    <td class="td-vrup">${l.VrupI.toFixed(2)}</td><td class="td-vadm">${(l.VrupI/fs).toFixed(2)}</td>
+  </tr>`).join('');
+
+  const ok=load<=Vadm;
+
+  // Sugestões quando a verificação não atende
+  let suggestion='';
+  if(!ok){
+    const sugestoes=[];
+    if(limitante==='elem'){
+      sugestoes.push('o elemento estrutural é o fator limitante — considere uma estaca de maior capacidade estrutural (maior seção/armadura) dentro da mesma categoria');
+    } else {
+      sugestoes.push('aumentar o comprimento de embutimento, para incorporar mais resistência lateral e/ou atingir uma camada de solo mais resistente na ponta');
+      sugestoes.push('adotar uma estaca de maior diâmetro/seção (maior perímetro e área de ponta), aumentando RL e RP');
+      sugestoes.push('considerar uma estaca mista, com segmento final em uma seção maior');
+    }
+    sugestoes.push('aumentar o número de estacas do bloco de fundação, reduzindo a carga distribuída por estaca');
+    sugestoes.push('verificar se o NSPT do perfil de sondagem reflete corretamente o terreno na região (camadas muito moles podem indicar necessidade de outra solução de fundação)');
+    suggestion=`
+    <div style="font-size:12px;color:var(--warn);margin-top:10px;padding:10px 12px;border-radius:9px;
+      background:rgba(243,156,18,.08);border:1px solid rgba(243,156,18,.25);line-height:1.6;">
+      <b>Sugestões para atender:</b>
+      <ul style="margin:6px 0 0 18px;padding:0;">
+        ${sugestoes.map(s=>`<li>${s}</li>`).join('')}
+      </ul>
+    </div>`;
+  }
+
+  const elemInfo=(Velem!=null)
+    ? `V<sub>elem</sub> = ${Velem.toFixed(2)} tf (catálogo)`
+    : `V<sub>elem</sub> não informado para esta estaca — apenas o terreno foi verificado`;
+
+  document.getElementById('fsResult').innerHTML=`
+    <div class="FS-row ${ok?'ok':'nok'}">
+      <div><div style="font-size:10px;opacity:.7;text-transform:uppercase;letter-spacing:.8px">FS real</div>
+        <div class="FS-val">${fsReal.toFixed(2)}</div></div>
+      <div style="flex:1;padding-left:14px;font-size:13px;">
+        ${ok?`Carga de ${load.toFixed(2)} tf/estaca <b>atende</b> — Vadm = ${Vadm.toFixed(2)} tf`
+            :`Carga de ${load.toFixed(2)} tf/estaca <b>EXCEDE</b> — Vadm = ${Vadm.toFixed(2)} tf`}
+        ${(Velem!=null&&limitante==='elem')?' (limitado pelo elemento estrutural)':''}
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;">
+      Bloco: ${loadTotal.toFixed(2)} tf ÷ ${pileCount} estaca${pileCount>1?'s':''} = ${load.toFixed(2)} tf/estaca
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px;">
+      ${mistaAtiva?'Estaca mista':pileFinal.name} · ∅${(pileFinal.d*100).toFixed(0)}cm
+      · U=${pileFinal.perimeter}m · Ap=${pileFinal.area.toFixed(4)}m² · FS = ${fs}
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px;">
+      V<sub>adm</sub> = min(V<sub>rup</sub>/FS , V<sub>elem</sub>) = min(${VadmTerreno.toFixed(2)} , ${Velem!=null?Velem.toFixed(2):'—'}) tf · ${elemInfo}
+    </div>
+    ${suggestion}`;
+
+  // Condições consideradas (método + tipo de estaca)
+  renderConditions(pileFinal,active,mistaAtiva,segmentos);
+
+  document.getElementById('results').classList.remove('hidden');
+  lastCalcData=[layerDetails,active,Kp,pileFinal,RP,RL,Vrup,Vadm,depth,fs];
+  drawChart(...lastCalcData);
+  return true;
+}
+
+// Recalcula automaticamente; esconde resultados se não houver dados suficientes
+function recalc(){
+  const ok=calculate();
+  if(!ok){
+    document.getElementById('results').classList.add('hidden');
+    lastCalcData=null;
+  }
+}
+
+// ═══════════════════════════════════════
+// CONDIÇÕES CONSIDERADAS (exibição informativa)
+// ═══════════════════════════════════════
+function renderConditions(pileFinal,active,mista,segs){
+  const box=document.getElementById('conditionsBox');
+  if(!box)return;
+  // Lista de ptypes envolvidos (considera estaca mista)
+  const ptypes=new Set();
+  if(mista&&segs.length>0){
+    segs.forEach(s=>{const p=getAllPiles().find(pp=>pp.id===s.pileId);if(p)ptypes.add(p.ptype);});
+    ptypes.add(pileFinal.ptype);
+  } else {
+    ptypes.add(pileFinal.ptype);
+  }
+  const items=[...ptypes].map(pt=>{
+    const info=PTYPE_INFO[pt];
+    if(!info)return `<li><b>${pt}</b>: condições não documentadas.</li>`;
+    return `<li><b>${info.label}</b>: ${info.text}</li>`;
+  }).join('');
+  box.innerHTML=`
+    <ul style="margin:0 0 0 18px;padding:0;line-height:1.7;font-size:12px;color:var(--muted)">
+      ${items}
+      <li>Resistência por atrito lateral (R<sub>L</sub>): r<sub>Li</sub> = (N<sub>cor</sub>/3 + 1) tf/m², com N<sub>cor</sub> = max(N<sub>SPT</sub>, 3); ΔR<sub>Li</sub> = r<sub>Li</sub> · α · β · U · Δz.</li>
+      <li>Resistência de ponta (R<sub>P</sub>): r<sub>P</sub> = N<sub>p</sub> · K<sub>p</sub>, onde N<sub>p</sub> é a média dos N<sub>SPT</sub> das 3 últimas camadas (limitados a 50) e K<sub>p</sub> depende do tipo de solo na ponta (argila=12, silte=20, areia=40, tf/m²).</li>
+      <li>Carga de ruptura: V<sub>rup</sub> = R<sub>L</sub> + R<sub>P</sub>.</li>
+      <li>Carga admissível: V<sub>adm</sub> = min(V<sub>rup</sub>/FS , V<sub>elem</sub>), conforme NBR 6122 — FS ≥ 2,0 (recomendado), com a opção FS=1,00 (SEM, sem fator de segurança) disponível para fins de verificação/comparação.</li>
+      <li>Importante: a carga (tf) informada é a carga <b>por estaca</b>, não a carga total do pilar/bloco — a carga do pilar deve ser dividida pelo número de estacas do bloco de fundação para obter a carga individual a comparar com V<sub>adm</sub>.</li>
+    </ul>`;
+}
+
+// ═══════════════════════════════════════
+// GRÁFICO — função central
+// ═══════════════════════════════════════
+function drawChartOnCanvas(canvas,layers,active,Kp,pile,RP,RL,Vrup,Vadm,maxDepth,fs){
+  const parent=canvas.parentElement;
+  const isFS=canvas.id==='chartCanvasFS';
+  const W=parent?.clientWidth||canvas.offsetWidth||300;
+  // Em fullscreen, usa a altura real do container (responsivo à resolução da tela);
+  // no card normal, calcula altura proporcional à profundidade.
+  const H=isFS?Math.max(parent.clientHeight||300,200):Math.max(280,Math.min(500,maxDepth*12+70));
+  canvas.width=W*devicePixelRatio;canvas.height=H*devicePixelRatio;
+  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(devicePixelRatio,devicePixelRatio);
+  ctx.clearRect(0,0,W,H);
+
+  const PAD_L=54,PAD_R=16,PAD_T=30,PAD_B=16;
+  const cW=W-PAD_L-PAD_R,cH=H-PAD_T-PAD_B;
+  // Escala controlada pelo slider (ou auto)
+  const sliderMax=parseInt(document.getElementById('chartScale').value)||200;
+  const maxVal=Math.max(sliderMax,Vrup*1.05,1);
+  const scaleX=cW/maxVal,scaleY=cH/maxDepth;
+
+  ctx.fillStyle=cssVar('--canvas-bg');ctx.fillRect(0,0,W,H);
+
+  const xStep=niceStep(maxVal,5);
+  ctx.font='10px monospace';ctx.textAlign='center';
+  for(let v=0;v<=maxVal;v+=xStep){
+    const x=PAD_L+v*scaleX;
+    ctx.strokeStyle=ink(.07);ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,PAD_T);ctx.lineTo(x,PAD_T+cH);ctx.stroke();
+    ctx.fillStyle=ink(.5);ctx.fillText(v.toFixed(0),x,PAD_T-6);
+  }
+  ctx.fillStyle=ink(.7);ctx.fillText('Carga (tf)',PAD_L+cW/2,11);
+
+  const dStep=maxDepth<=15?2:maxDepth<=30?5:10;
+  ctx.textAlign='right';
+  for(let d=0;d<=maxDepth;d+=dStep){
+    const y=PAD_T+d*scaleY;
+    ctx.strokeStyle=ink(.07);ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(PAD_L,y);ctx.lineTo(PAD_L+cW,y);ctx.stroke();
+    ctx.fillStyle=ink(.5);ctx.fillText(d+'m',PAD_L-4,y+3);
+  }
+  ctx.save();ctx.translate(10,PAD_T+cH/2);ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center';ctx.fillStyle=ink(.7);ctx.font='10px monospace';
+  ctx.fillText('Profundidade (m)',0,0);ctx.restore();
+  ctx.strokeStyle=ink(.25);ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(PAD_L+cW,PAD_T);ctx.lineTo(PAD_L,PAD_T);ctx.lineTo(PAD_L,PAD_T+cH);ctx.stroke();
+
+  const ptRL=[{x:PAD_L,y:PAD_T}],ptRP=[{x:PAD_L,y:PAD_T}],ptVrup=[{x:PAD_L,y:PAD_T}];
+  layers.forEach(l=>{
+    const y=PAD_T+l.depth*scaleY;
+    ptRL.push({x:PAD_L+Math.min(l.RL_accum,maxVal)*scaleX,y});
+    ptRP.push({x:PAD_L+Math.min(l.RPI,maxVal)*scaleX,y});
+    ptVrup.push({x:PAD_L+Math.min(l.VrupI,maxVal)*scaleX,y});
+  });
+
+  function drawLine(pts,color,width,dash=[]){
+    ctx.beginPath();pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+    ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineJoin='round';
+    ctx.setLineDash(dash);ctx.stroke();ctx.setLineDash([]);
+  }
+  ctx.beginPath();ctx.moveTo(PAD_L,PAD_T);ptVrup.forEach(p=>ctx.lineTo(p.x,p.y));
+  ctx.lineTo(PAD_L,PAD_T+layers[layers.length-1].depth*scaleY);
+  ctx.closePath();ctx.fillStyle='rgba(46,204,113,.07)';ctx.fill();
+  drawLine(ptVrup,'#2ecc71',2.0);drawLine(ptRL,'#5dade2',2.0);drawLine(ptRP,'#ff5f57',2.0);
+
+  const xVadm=PAD_L+Math.min(Vadm,maxVal)*scaleX;
+  if(xVadm<=PAD_L+cW){
+    drawLine([{x:xVadm,y:PAD_T},{x:xVadm,y:PAD_T+cH}],'#E67E22',1.2,[4,4]);
+    ctx.fillStyle='#E67E22';ctx.font='bold 9px monospace';ctx.textAlign='center';
+    ctx.fillText('Vadm',xVadm,PAD_T-4);
+  }
+  [[ptRL,'#5dade2'],[ptRP,'#ff5f57'],[ptVrup,'#2ecc71']].forEach(([pts,col])=>{
+    const last=pts[pts.length-1];
+    ctx.beginPath();ctx.arc(last.x,last.y,3.5,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+  });
+  document.getElementById('chartLegend').innerHTML=`
+    <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:24px;height:3px;background:#5dade2;border-radius:2px"></span>RL = ${RL.toFixed(2)} tf</span>
+    <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:24px;height:3px;background:#ff5f57;border-radius:2px"></span>RP = ${RP.toFixed(2)} tf</span>
+    <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:24px;height:3px;background:#2ecc71;border-radius:2px"></span>Vrup = ${(RL+RP).toFixed(2)} tf</span>
+    <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:24px;height:3px;background:#E67E22;border-radius:2px"></span>Vadm = ${Vadm.toFixed(2)} tf</span>`;
+}
+
+function drawChart(...args){
+  drawChartOnCanvas(document.getElementById('chartCanvas'),...args);
+  if(fsActive==='chart'){const c=document.getElementById('chartCanvasFS');if(c)drawChartFS();}
+}
+function drawChartFS(){
+  const c=document.getElementById('chartCanvasFS');
+  if(!c||!lastCalcData)return;
+  drawChartOnCanvas(c,...lastCalcData);
+}
+
+// ═══════════════════════════════════════
+// EXPORTAR TABELA PARA EXCEL
+// ═══════════════════════════════════════
+function exportTableExcel(){
+  if(!lastCalcData){alert('Calcule a capacidade de carga antes de exportar.');return;}
+  const [layerDetails,,,,,,,,,fs]=lastCalcData;
+  const header=['Prof.(m)','Cota(m)','NSPT','α','β','Ncor','rLi(tf/m²)','ΔRLi(tf)','RL(tf)',
+    'Np','Kp(tf/m²)','rP(tf/m²)','RP(tf)','Vrup(tf)','Vadm(tf)'];
+  const rows=layerDetails.map(l=>[
+    `${l.prevD.toFixed(1)}–${l.depth.toFixed(1)}`, -l.depth,
+    l.nspt, l.alfa, l.beta, l.Ncor, l.rLi, l.DRLi, l.RL_accum,
+    l.NpI, l.KpI, l.NpI*l.KpI, l.RPI, l.VrupI, l.VrupI/fs
+  ]);
+  const ws=XLSX.utils.aoa_to_sheet([header,...rows]);
+  ws['!cols']=header.map(()=>({wch:11}));
+  const wb=XLSX.utils.book_new();
+  // Nome da sondagem ativa — tanto a planilha quanto o arquivo refletem a sondagem selecionada
+  const soundingName=getActiveSounding().name;
+  const sheetName=`Memória ${soundingName}`.substring(0,31); // limite do Excel para nome de aba
+  XLSX.utils.book_append_sheet(wb,ws,sheetName);
+  XLSX.writeFile(wb,`memoria_calculo_decourt_${soundingName}.xlsx`);
+}
+
+function niceStep(max,n){
+  const raw=max/n,mag=Math.pow(10,Math.floor(Math.log10(raw))),norm=raw/mag;
+  return(norm<1.5?1:norm<3.5?2:norm<7.5?5:10)*mag;
+}
+</script>
+</body>
+</html>
